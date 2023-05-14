@@ -1,4 +1,5 @@
 fastapi
 uvicorn
+sentence_transformers
 torch
 pydantic
