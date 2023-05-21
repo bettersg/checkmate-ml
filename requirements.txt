@@ -3,3 +3,6 @@ uvicorn
 sentence_transformers
 torch
 pydantic
+sklearn
+joblib
+numpy

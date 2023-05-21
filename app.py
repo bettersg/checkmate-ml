@@ -1,14 +1,26 @@
 from fastapi import FastAPI
 from pydantic import BaseModel
 import torch
+import numpy as np
+import joblib
+from sklearn.metrics.pairwise import cosine_similarity
 
 app = FastAPI()
-model = torch.load('models/sentence-transformers-all-MiniLM-L6-v2.pt')
+embedding_model = torch.load('files/sentence-transformers-all-MiniLM-L6-v2.pt')
+representative_embeddings = np.load("files/representative_embeddings.npy")
+trivial_svc = joblib.load('files/trivial_svc.joblib')
 
 class Item(BaseModel):
     text: str
 
 @app.post("/embed")
-async def create_item(item: Item):
-    embeddings = model.encode(item.text)
-    return {'embeddings': embeddings.tolist()}
+async def get_embedding(item: Item):
+    embedding= embedding_model.encode(item.text)
+    return {'embedding': embedding.tolist()}
+
+@app.post("/checkTrivial")
+async def checkTrivial(item: Item):
+    embedding = embedding_model.encode(item.text)
+    similarity_features = cosine_similarity(embedding.reshape(1,-1),representative_embeddings)
+    prediction = trivial_svc.predict(similarity_features)[0]
+    return {'prediction': "trivial" if prediction == 1 else "non-trivial"}
