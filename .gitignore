@@ -1,3 +1,7 @@
 __pycache__/
 env/
 .git/
+checkmatesgenv/
+checkmatemlenv/
+access.log
+error.log

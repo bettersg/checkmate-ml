@@ -1,12 +1,13 @@
+import joblib
+import numpy as np
 from fastapi import FastAPI
 from pydantic import BaseModel
-import torch
-import numpy as np
-import joblib
+from sentence_transformers import SentenceTransformer
 from sklearn.metrics.pairwise import cosine_similarity
 
 app = FastAPI()
-embedding_model = torch.load('files/sentence-transformers-all-MiniLM-L6-v2.pt')
+
+embedding_model = SentenceTransformer('sentence-transformers/all-MiniLM-L6-v2')
 representative_embeddings = np.load("files/representative_embeddings.npy")
 trivial_svc = joblib.load('files/trivial_svc.joblib')
 
