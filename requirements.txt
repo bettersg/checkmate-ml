@@ -1,8 +1,7 @@
 fastapi
 uvicorn
 sentence_transformers
-torch
 pydantic
-sklearn
+scikit-learn
 joblib
 numpy
