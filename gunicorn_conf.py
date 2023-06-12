@@ -11,3 +11,4 @@ worker_class = 'uvicorn.workers.UvicornWorker'
 loglevel = 'debug'
 accesslog = '/opt/checkmate-ml-models/access_log'
 errorlog =  '/opt/checkmate-ml-models/error_log'
+
