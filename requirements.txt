@@ -6,3 +6,6 @@ pydantic
 scikit-learn
 joblib
 numpy
+paddlepaddle
+paddleocr>=2.0.1
+openai
