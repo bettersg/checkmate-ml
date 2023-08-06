@@ -32,7 +32,7 @@ async def checkTrivial(item: ItemText):
   return {'prediction': "trivial" if prediction == 1 else "non-trivial"}
 
 @app.post("/getL1Category")
-async def checkTrivial(item: ItemText):
+async def getL1Category(item: ItemText):
   embedding = embedding_model.encode(item.text)
   prediction = L1_svc.predict(embedding.reshape(1,-1))[0]
   return {'prediction': prediction}
