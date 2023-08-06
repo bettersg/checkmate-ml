@@ -3,8 +3,6 @@ import numpy as np
 from fastapi import FastAPI
 from pydantic import BaseModel
 from sentence_transformers import SentenceTransformer
-import numpy as np
-import joblib
 from sklearn.metrics.pairwise import cosine_similarity
 from ocr import end_to_end
 
