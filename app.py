@@ -39,9 +39,10 @@ async def checkTrivial(item: ItemText):
 
 @app.post("/ocr")
 async def getOCR(item: ItemUrl):
-  output, is_convo, extracted_message = end_to_end(item.url)
+  output, is_convo, extracted_message, sender = end_to_end(item.url)
   return {
     'output': output,
     'is_convo': is_convo,
-    'extracted_message': extracted_message
+    'extracted_message': extracted_message,
+    'sender': sender,
   }

@@ -8,14 +8,24 @@ import json
 import os
 
 #OCR Initialization
-ocr = PaddleOCR(use_angle_cls=True, lang="ch")
+cls_path = 'files/paddleOCR/ch_ppocr_mobile_v2.0_cls_slim_infer'
+rec_path = 'files/paddleOCR/ch_PP-OCRv3_rec_slim_infer'
+det_path = 'files/paddleOCR/ch_PP-OCRv3_det_slim_infer'
+ocr = PaddleOCR(det_model_dir=det_path, rec_model_dir=rec_path, cls_model_dir=cls_path, use_angle_cls=True)
+
+#OpenAI Key
 openai.api_key = os.environ["OPENAI_API_KEY"]
+
+#OCR Hyperparameters
 left_determining_ratio = 0.2 #determines what's considered messages that start on the left
 same_height_tolerance_ratio = 0.3 #proportion of the max of current and previous line heights, that is the tolerance for determining whether we assume current line height to be same as previous line
 same_left_alignment_tolerance_ratio = 0.01 #proportion of total image width, that is the tolerance for determining 2 lines are both left aligned
-threshold = 5 #1/threshold is the proportion of messages from top that are ignored when looking for timestamp
+threshold = 6 #1/threshold is the proportion of messages from top that are ignored when looking for timestamp
+
+#OpenAI Hyperparameters
 prompts = json.load(open("files/ocr_prompts.json"))
 
+##FUNCTIONS##
 def perform_ocr(img_url):
   """
   Performs OCR on the image at the given url, and returns the OCR result and the image size
@@ -91,40 +101,11 @@ def group_messages(ocr_result, image_size):
     message_groups.append(message_group)
   return message_groups
 
-def add_spaces(message_groups):
+def extract_meaningful_groups(message_groups):
   """
-  calls openai to add spaces to the messages, returns a list of dictionaries, each dictionary representing a message
+  calls openai to add spaces to the messages, and extract those that are relevant
   """
   condensed_message_groups = json.dumps([{"is_left": message_group["is_left"], "text": message_group["text"]} for message_group in message_groups], indent=2)
-  relevant_prompts = prompts.get("add-spaces",{})
-  system_message_template = relevant_prompts.get("system","")
-  assert system_message_template
-  user_message_example = relevant_prompts.get("user-example","")
-  assert user_message_example
-  ai_message_example = relevant_prompts.get("ai-example","")
-  assert ai_message_example
-  MODEL = "gpt-3.5-turbo"
-  response = openai.ChatCompletion.create(
-      model=MODEL,
-      messages=[
-          {"role": "system", "content": system_message_template},
-          {"role": "user", "content": user_message_example},
-          {"role": "assistant", "content": ai_message_example},
-          {"role": "user", "content": condensed_message_groups},
-      ],
-      temperature=0,
-  )
-  try:
-    return json.loads(response.choices[0].message.content)
-  except Exception as e:
-    print("Error:", e)
-    return condensed_message_groups
-
-def extract_meaningful_groups(fixed_message_groups):
-  """
-  calls openai to add spaces to the messages, returns a list of dictionaries, each dictionary representing a message
-  """
-  condensed_message_groups = json.dumps(fixed_message_groups, indent=2)
   relevant_prompts = prompts.get("extract-convo",{})
   system_message_template = relevant_prompts.get("system","")
   assert system_message_template
@@ -150,6 +131,9 @@ def extract_meaningful_groups(fixed_message_groups):
     return condensed_message_groups
 
 def check_convo(messages, threshold):
+  """
+  function to check if the screenshot is a conversation from the messages. It basically looks for standalone timestamps which are indicative of messages.
+  """
   pattern = r'^([01]?[0-9]|2[0-3]):[0-5][0-9](?:\s?[apAP][mM])?$'
   message_length = len(messages)
   cutoff = max(1,int(message_length/threshold)) #only starts finding timestamps from below here
@@ -159,6 +143,9 @@ def check_convo(messages, threshold):
   return False
 
 def get_impt_message(final_output):
+  """
+  of all remaining messages, return the longest one which we will then be considered the longest message
+  """
   try:
     if len(final_output["text_messages"]) > 0:
       longest_text_item = max(final_output["text_messages"], key=lambda x: len(x["text"]))
@@ -169,12 +156,15 @@ def get_impt_message(final_output):
     return ""
 
 def end_to_end(img_url):
+  """
+  runs the process end to end
+  """
   ocr_result, img_size = perform_ocr(img_url)
   message_groups = group_messages(ocr_result, img_size)
-  fixed_message_groups = add_spaces(message_groups)
-  output = extract_meaningful_groups(fixed_message_groups)
+  output = extract_meaningful_groups(message_groups)
   ocr_output_processed = [item[1][0] for item in ocr_result]
   is_convo = check_convo(ocr_output_processed, threshold)
   important_message = get_impt_message(output)
-  return output, is_convo, important_message
+  sender = output.get("sender_name_or_phone_number", "")
+  return output, is_convo, important_message, sender
 
