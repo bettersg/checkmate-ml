@@ -40,9 +40,16 @@ async def getL1Category(item: ItemText):
 @app.post("/ocr")
 async def getOCR(item: ItemUrl):
   output, is_convo, extracted_message, sender = end_to_end(item.url)
+  if extracted_message:
+    embedding = embedding_model.encode(extracted_message)
+    prediction = L1_svc.predict(embedding.reshape(1,-1))[0]
+  else:
+    prediction = "unsure"
+
   return {
     'output': output,
     'is_convo': is_convo,
     'extracted_message': extracted_message,
     'sender': sender,
+    'prediction': prediction,
   }
