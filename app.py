@@ -8,10 +8,10 @@ from ocr import end_to_end
 
 app = FastAPI()
 
-embedding_model = SentenceTransformer("sentence-transformers/all-MiniLM-L6-v2")
+embedding_model = SentenceTransformer('sentence-transformers/all-MiniLM-L6-v2')
 representative_embeddings = np.load("files/representative_embeddings.npy")
-trivial_svc = joblib.load("files/trivial_svc.joblib")
-L1_svc = joblib.load("files/L1_svc.joblib")
+trivial_svc = joblib.load('files/trivial_svc.joblib')
+L1_svc = joblib.load('files/L1_svc.joblib')
 
 class ItemText(BaseModel):
   text: str
@@ -22,13 +22,13 @@ class ItemUrl(BaseModel):
 @app.post("/embed")
 async def get_embedding(item: ItemText):
   embedding= embedding_model.encode(item.text)
-  return {"embedding": embedding.tolist()}
+  return {'embedding': embedding.tolist()}
 
 @app.post("/getL1Category")
 async def getL1Category(item: ItemText):
   embedding = embedding_model.encode(item.text)
   prediction = L1_svc.predict(embedding.reshape(1,-1))[0]
-  return {"prediction": prediction}
+  return {'prediction': prediction}
 
 @app.post("/ocr")
 async def getOCR(item: ItemUrl):
@@ -39,9 +39,9 @@ async def getOCR(item: ItemUrl):
   else:
     prediction = "unsure"
   return {
-    "output": output,
-    "is_convo": is_convo,
-    "extracted_message": extracted_message,
-    "sender": sender,
-    "prediction": prediction,
+    'output': output,
+    'is_convo': is_convo,
+    'extracted_message': extracted_message,
+    'sender': sender,
+    'prediction': prediction,
   }
