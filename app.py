@@ -28,7 +28,7 @@ async def get_embedding(item: ItemText):
 async def getL1Category(item: ItemText):
   embedding = embedding_model.encode(item.text)
   prediction = L1_svc.predict(embedding.reshape(1,-1))[0]
-  return {'prediction': prediction}
+  return {'prediction': "irrelevant" if prediction == "trivial" else prediction}
 
 @app.post("/ocr")
 async def getOCR(item: ItemUrl):
@@ -43,5 +43,5 @@ async def getOCR(item: ItemUrl):
     'is_convo': is_convo,
     'extracted_message': extracted_message,
     'sender': sender,
-    'prediction': prediction,
+    'prediction': "irrelevant" if prediction == "trivial" else prediction,
   }
