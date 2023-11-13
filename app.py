@@ -24,18 +24,11 @@ async def get_embedding(item: ItemText):
   embedding= embedding_model.encode(item.text)
   return {'embedding': embedding.tolist()}
 
-@app.post("/checkTrivial")
-async def checkTrivial(item: ItemText):
-  embedding = embedding_model.encode(item.text)
-  similarity_features = cosine_similarity(embedding.reshape(1,-1),representative_embeddings)
-  prediction = trivial_svc.predict(similarity_features)[0]
-  return {'prediction': "trivial" if prediction == 1 else "non-trivial"}
-
 @app.post("/getL1Category")
 async def getL1Category(item: ItemText):
   embedding = embedding_model.encode(item.text)
   prediction = L1_svc.predict(embedding.reshape(1,-1))[0]
-  return {'prediction': prediction}
+  return {'prediction': "irrelevant" if prediction == "trivial" else prediction}
 
 @app.post("/ocr")
 async def getOCR(item: ItemUrl):
@@ -45,11 +38,10 @@ async def getOCR(item: ItemUrl):
     prediction = L1_svc.predict(embedding.reshape(1,-1))[0]
   else:
     prediction = "unsure"
-
   return {
     'output': output,
     'is_convo': is_convo,
     'extracted_message': extracted_message,
     'sender': sender,
-    'prediction': prediction,
+    'prediction': "irrelevant" if prediction == "trivial" else prediction,
   }
