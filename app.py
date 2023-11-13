@@ -3,14 +3,11 @@ import numpy as np
 from fastapi import FastAPI
 from pydantic import BaseModel
 from sentence_transformers import SentenceTransformer
-from sklearn.metrics.pairwise import cosine_similarity
 from ocr import end_to_end
 
 app = FastAPI()
 
 embedding_model = SentenceTransformer('sentence-transformers/all-MiniLM-L6-v2')
-representative_embeddings = np.load("files/representative_embeddings.npy")
-trivial_svc = joblib.load('files/trivial_svc.joblib')
 L1_svc = joblib.load('files/L1_svc.joblib')
 
 class ItemText(BaseModel):
