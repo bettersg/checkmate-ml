@@ -1,5 +1,5 @@
 from paddleocr import PaddleOCR
-import openai
+from openai import OpenAI
 import re
 import requests
 from io import BytesIO
@@ -13,9 +13,10 @@ rec_path = 'files/paddleOCR/ch_PP-OCRv3_rec_slim_infer'
 det_path = 'files/paddleOCR/ch_PP-OCRv3_det_slim_infer'
 ocr = PaddleOCR(det_model_dir=det_path, rec_model_dir=rec_path, cls_model_dir=cls_path, use_angle_cls=True)
 
-#OpenAI Key
-openai.api_key = os.environ["OPENAI_API_KEY"]
-
+#OpenAI initialisation
+client = OpenAI(
+    api_key=os.environ.get("OPENAI_API_KEY"),
+)
 #OCR Hyperparameters
 left_determining_ratio = 0.2 #determines what's considered messages that start on the left
 same_height_tolerance_ratio = 0.3 #proportion of the max of current and previous line heights, that is the tolerance for determining whether we assume current line height to be same as previous line
@@ -114,7 +115,7 @@ def extract_meaningful_groups(message_groups):
   ai_message_example = relevant_prompts.get("ai-example","")
   assert ai_message_example
   MODEL = "gpt-3.5-turbo"
-  response = openai.ChatCompletion.create(
+  response = client.chat.completions.create(
       model=MODEL,
       messages=[
           {"role": "system", "content": system_message_template},
@@ -123,6 +124,8 @@ def extract_meaningful_groups(message_groups):
           {"role": "user", "content": condensed_message_groups},
       ],
       temperature=0,
+      seed=11,
+      #response_format= {"type":"json_object"}
   )
   try:
     return json.loads(response.choices[0].message.content)
