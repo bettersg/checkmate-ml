@@ -1,7 +1,16 @@
 import vertexai
 from vertexai.preview.generative_models import GenerativeModel, Part
 import json
-PROJECT_ID = "checkmate-373101"
+import requests
+
+def get_project_id():
+    url = "http://metadata.google.internal/computeMetadata/v1/project/project-id"
+    headers = {"Metadata-Flavor": "Google"}
+    response = requests.get(url, headers=headers)
+    project_id = response.text
+    return project_id
+
+PROJECT_ID = get_project_id()
 REGION = "asia-southeast1"
 vertexai.init(project=PROJECT_ID, location=REGION)
 
