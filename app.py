@@ -4,6 +4,7 @@ from fastapi import FastAPI
 from pydantic import BaseModel
 from sentence_transformers import SentenceTransformer
 from ocr import end_to_end
+from ocr_v2 import perform_ocr
 
 app = FastAPI()
 
@@ -42,3 +43,14 @@ async def getOCR(item: ItemUrl):
     'sender': sender,
     'prediction': "irrelevant" if prediction == "trivial" else prediction,
   }
+
+@app.post("/ocr-v2")
+async def get_ocr(item: ItemUrl):
+  results = perform_ocr(item.url)
+  if "extracted_message" in results:
+    extracted_message = results["extracted_message"]
+    embedding = embedding_model.encode(extracted_message)
+    results["prediction"] = L1_svc.predict(embedding.reshape(1,-1))[0]
+  else:
+    results["prediction"] = "unsure"
+  return results
