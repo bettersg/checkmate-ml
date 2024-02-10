@@ -16,17 +16,12 @@ vertexai.init(project=PROJECT_ID, location=REGION)
 
 multimodal_model = GenerativeModel("gemini-pro-vision")
 
-prompt = """You are an OCR bot. You will extract the text content from the provided image. \
-If the image is a screenshot of a chat window, such as SMS/Whatsapp/Messenger, then you should only extract the text message in chat bubbles from the sender (not the receipient), and you should not include other system or display texts. Please also extract the sender's information (name, number, or user ID). \
-If the image is a screenshot of an email, then you should only extract the text message in the main email body. Please also extract the sender's information (name or email address), and the email subject. \
-If the image is a picture of a letter, then you should only extract the text message in the main letter body. Please also extract the sender's information, and the letter subject. \
-If the image is none of the above, then you should extract all text content with meaningful paragraphing. \
-Provide your output in JSON, with the following keys: \
-\n- "image_type" (string): one of ["convo", "email", "letter", "others"]
-\n- "sender" (string or None): sender information extracted for "image_type" = "convo", "email" or "letter"
-\n- "subject" (string or None): subject  extracted for "image_type" = "email" or "letter"
-\n- "extracted_message" (string): your extracted text content
-"""
+prompts = json.load(open("files/prompts.json"))
+
+prompt = prompts.get("ocr-v2", {}).get("system",None)
+
+if prompt is None:
+    raise Exception("Prompt not found in prompts.json!")
 
 def perform_ocr(img_url):
     """

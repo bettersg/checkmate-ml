@@ -6,3 +6,5 @@ checkmatemlenv/
 access.log
 error.log
 files/
+.env
+.dockerignore

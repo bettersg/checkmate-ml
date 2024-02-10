@@ -15,6 +15,7 @@ COPY requirements.txt /app
 ENV PIP_ROOT_USER_ACTION=ignore
 
 # Install dependencies.
+RUN pip install torch --index-url https://download.pytorch.org/whl/cpu
 RUN pip install -r requirements.txt
 
 # Copy local code to the container image.

@@ -5,6 +5,8 @@ from pydantic import BaseModel
 from sentence_transformers import SentenceTransformer
 from ocr import end_to_end
 from ocr_v2 import perform_ocr
+from trivial_filter import check_should_review
+
 
 app = FastAPI()
 
@@ -23,7 +25,17 @@ async def get_embedding(item: ItemText):
   return {'embedding': embedding.tolist()}
 
 @app.post("/getL1Category")
-async def getL1Category(item: ItemText):
+async def get_L1_category(item: ItemText):
+  embedding = embedding_model.encode(item.text)
+  prediction = L1_svc.predict(embedding.reshape(1,-1))[0]
+  if prediction == "trivial" or prediction == "irrelevant":
+    should_review = check_should_review(item.text)
+    if should_review:
+      prediction = "unsure"
+  return {'prediction': "irrelevant" if prediction == "trivial" else prediction}
+
+@app.post("/getL1Category-old")
+async def get_L1_category_old(item: ItemText):
   embedding = embedding_model.encode(item.text)
   prediction = L1_svc.predict(embedding.reshape(1,-1))[0]
   return {'prediction': "irrelevant" if prediction == "trivial" else prediction}

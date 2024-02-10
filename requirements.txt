@@ -11,3 +11,6 @@ paddleocr>=2.0.1
 openai
 google-cloud-aiplatform
 requests
+langchain
+langchain-openai
+python-dotenv
