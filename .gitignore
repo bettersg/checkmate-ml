@@ -8,3 +8,4 @@ error.log
 files/
 .env
 .dockerignore
+credentials/

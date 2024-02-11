@@ -2,7 +2,7 @@ import vertexai
 from vertexai.preview.generative_models import GenerativeModel, Part
 import json
 import requests
-
+import os
 def get_project_id():
     url = "http://metadata.google.internal/computeMetadata/v1/project/project-id"
     headers = {"Metadata-Flavor": "Google"}
@@ -10,9 +10,14 @@ def get_project_id():
     project_id = response.text
     return project_id
 
-PROJECT_ID = get_project_id()
+
 REGION = "asia-southeast1"
-vertexai.init(project=PROJECT_ID, location=REGION)
+
+if os.environ.get("GOOGLE_APPLICATION_CREDENTIALS") is None:
+    PROJECT_ID = get_project_id()
+    vertexai.init(project=PROJECT_ID, location=REGION)
+else:
+    vertexai.init()
 
 multimodal_model = GenerativeModel("gemini-pro-vision")
 
@@ -39,6 +44,8 @@ def perform_ocr(img_url):
         assert "sender" in return_dict
         assert "subject" in return_dict
         assert "extracted_message" in return_dict
+        if return_dict["image_type"] not in ["email", "convo", "letter", "others"]:
+            return_dict["image_type"] = "others"
         return return_dict
     except Exception as e:
         print("Error:", e)

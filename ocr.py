@@ -7,9 +7,7 @@ from PIL import Image
 import json
 import os
 
-from dotenv import load_dotenv
 
-load_dotenv()
 
 #OCR Initialization
 cls_path = 'files/paddleOCR/ch_ppocr_mobile_v2.0_cls_slim_infer'

@@ -1,3 +1,7 @@
+from dotenv import load_dotenv
+
+load_dotenv()
+
 import joblib
 import numpy as np
 from fastapi import FastAPI
@@ -10,7 +14,7 @@ from trivial_filter import check_should_review
 
 app = FastAPI()
 
-embedding_model = SentenceTransformer('sentence-transformers/all-MiniLM-L6-v2')
+embedding_model = SentenceTransformer('files/all-MiniLM-L6-v2')
 L1_svc = joblib.load('files/L1_svc.joblib')
 
 class ItemText(BaseModel):
@@ -20,12 +24,12 @@ class ItemUrl(BaseModel):
   url: str
 
 @app.post("/embed")
-async def get_embedding(item: ItemText):
+def get_embedding(item: ItemText):
   embedding= embedding_model.encode(item.text)
   return {'embedding': embedding.tolist()}
 
 @app.post("/getL1Category")
-async def get_L1_category(item: ItemText):
+def get_L1_category(item: ItemText):
   embedding = embedding_model.encode(item.text)
   prediction = L1_svc.predict(embedding.reshape(1,-1))[0]
   if prediction == "trivial" or prediction == "irrelevant":
@@ -35,13 +39,13 @@ async def get_L1_category(item: ItemText):
   return {'prediction': "irrelevant" if prediction == "trivial" else prediction}
 
 @app.post("/getL1Category-old")
-async def get_L1_category_old(item: ItemText):
+def get_L1_category_old(item: ItemText):
   embedding = embedding_model.encode(item.text)
   prediction = L1_svc.predict(embedding.reshape(1,-1))[0]
   return {'prediction': "irrelevant" if prediction == "trivial" else prediction}
 
 @app.post("/ocr")
-async def getOCR(item: ItemUrl):
+def getOCR(item: ItemUrl):
   output, is_convo, extracted_message, sender = end_to_end(item.url)
   if extracted_message:
     embedding = embedding_model.encode(extracted_message)
@@ -57,12 +61,11 @@ async def getOCR(item: ItemUrl):
   }
 
 @app.post("/ocr-v2")
-async def get_ocr(item: ItemUrl):
+def get_ocr(item: ItemUrl):
   results = perform_ocr(item.url)
   if "extracted_message" in results:
     extracted_message = results["extracted_message"]
-    embedding = embedding_model.encode(extracted_message)
-    results["prediction"] = L1_svc.predict(embedding.reshape(1,-1))[0]
+    results["prediction"] = get_L1_category(ItemText(text=extracted_message))
   else:
     results["prediction"] = "unsure"
   return results
