@@ -7,6 +7,8 @@ from PIL import Image
 import json
 import os
 
+
+
 #OCR Initialization
 cls_path = 'files/paddleOCR/ch_ppocr_mobile_v2.0_cls_slim_infer'
 rec_path = 'files/paddleOCR/ch_PP-OCRv3_rec_slim_infer'
@@ -24,7 +26,7 @@ same_left_alignment_tolerance_ratio = 0.01 #proportion of total image width, tha
 threshold = 6 #1/threshold is the proportion of messages from top that are ignored when looking for timestamp
 
 #OpenAI Hyperparameters
-prompts = json.load(open("files/ocr_prompts.json"))
+prompts = json.load(open("files/prompts.json"))
 
 ##FUNCTIONS##
 def perform_ocr(img_url):

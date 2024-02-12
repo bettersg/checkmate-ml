@@ -5,3 +5,7 @@ checkmatesgenv/
 checkmatemlenv/
 access.log
 error.log
+files/
+.env
+.dockerignore
+credentials/

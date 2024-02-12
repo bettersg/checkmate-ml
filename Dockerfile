@@ -15,6 +15,7 @@ COPY requirements.txt /app
 ENV PIP_ROOT_USER_ACTION=ignore
 
 # Install dependencies.
+RUN pip install torch --index-url https://download.pytorch.org/whl/cpu
 RUN pip install -r requirements.txt
 
 # Copy local code to the container image.
@@ -23,4 +24,4 @@ COPY . /app
 # Copy models downloaded from Cloud Storage into the container image
 COPY /files /app/files
 
-CMD uvicorn app:app --host 0.0.0.0 --port $PORT
+CMD uvicorn app:app --host 0.0.0.0 --port ${PORT:-8080}
