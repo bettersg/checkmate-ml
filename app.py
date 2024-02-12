@@ -65,7 +65,7 @@ def getOCR(item: ItemUrl):
 def get_ocr(item: ItemUrl):
   print("GenAI OCR called on {item.url}")
   results = perform_ocr(item.url)
-  if "extracted_message" in results:
+  if "extracted_message" in results and results["extracted_message"]:
     extracted_message = results["extracted_message"]
     results["prediction"] = get_L1_category(ItemText(text=extracted_message))
   else:
