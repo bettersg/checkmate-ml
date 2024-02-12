@@ -1,5 +1,5 @@
 import vertexai
-from vertexai.preview.generative_models import GenerativeModel, Part
+from vertexai.preview.generative_models import GenerativeModel, Part, HarmCategory, HarmBlockThreshold
 import json
 import requests
 import os
@@ -25,6 +25,18 @@ else:
 
 multimodal_model = GenerativeModel("gemini-pro-vision")
 
+# Model config
+model_config = {"temperature": 0}
+
+# Safety config
+safety_config = {
+    HarmCategory.HARM_CATEGORY_HATE_SPEECH: HarmBlockThreshold.BLOCK_NONE,
+    HarmCategory.HARM_CATEGORY_HARASSMENT: HarmBlockThreshold.BLOCK_NONE,
+    HarmCategory.HARM_CATEGORY_SEXUALLY_EXPLICIT: HarmBlockThreshold.BLOCK_NONE,
+    HarmCategory.HARM_CATEGORY_DANGEROUS_CONTENT: HarmBlockThreshold.BLOCK_NONE,
+}
+
+# Prompts
 prompts = json.load(open("files/prompts.json"))
 
 prompt = prompts.get("ocr-v2", {}).get("system",None)
@@ -37,8 +49,23 @@ def perform_ocr(img_url):
     function to perform OCR on the image
     """
     image = Part.from_uri(img_url, mime_type="image/jpeg")
-    response = multimodal_model.generate_content([prompt, image])
-    generated_text = response.text
+    response = multimodal_model.generate_content(
+        [prompt, image], 
+        generation_config=model_config,
+        safety_settings=safety_config, 
+    )
+
+    try:
+        generated_text = response.text
+    except Exception as e:
+        logger.error("Error parsing Gemini response", exc_info=True)
+        return {
+            "image_type": None,
+            "sender": None,
+            "subject": None,
+            "extracted_message": None
+        }
+    
     #strip everything before the first '{' and after the last '}'
     generated_text = generated_text[generated_text.find("{"):]
     generated_text = generated_text[:generated_text.rfind("}")+1]
