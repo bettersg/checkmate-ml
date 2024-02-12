@@ -7,6 +7,9 @@ from langchain_core.output_parsers import JsonOutputParser
 from langchain.schema import SystemMessage
 from langchain_openai.chat_models import ChatOpenAI
 import json
+import logging
+
+logger = logging.getLogger(__name__)
 
 llm = ChatOpenAI(
     model = "gpt-3.5-turbo-0125",
@@ -53,6 +56,6 @@ def check_should_review(message):
         response = chain.invoke({"message": message})
         return response.get("to_review", False)
     except Exception as e:
-        print("Error occured in chain:", e)
+        logger.error("Error occured in chain", exc_info=True)
         return False
   

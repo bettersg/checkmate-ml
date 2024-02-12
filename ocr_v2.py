@@ -3,6 +3,10 @@ from vertexai.preview.generative_models import GenerativeModel, Part
 import json
 import requests
 import os
+import logging
+
+logger = logging.getLogger(__name__)
+
 def get_project_id():
     url = "http://metadata.google.internal/computeMetadata/v1/project/project-id"
     headers = {"Metadata-Flavor": "Google"}
@@ -48,7 +52,7 @@ def perform_ocr(img_url):
             return_dict["image_type"] = "others"
         return return_dict
     except Exception as e:
-        print("Error:", e)
+        logger.error("Error processing JSON data", exc_info=True)
         return {
             "image_type": None,
             "sender": None,
