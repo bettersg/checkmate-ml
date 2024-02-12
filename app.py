@@ -10,16 +10,7 @@ from sentence_transformers import SentenceTransformer
 from ocr import end_to_end
 from ocr_v2 import perform_ocr
 from trivial_filter import check_should_review
-import logging
 
-def setup_logging():
-    logging.basicConfig(level=logging.INFO,
-                        format='%(asctime)s - %(levelname)s - %(name)s - %(message)s',
-                        datefmt='%Y-%m-%d %H:%M:%S')
-
-setup_logging()
-
-logger = logging.getLogger(__name__)
 app = FastAPI()
 
 embedding_model = SentenceTransformer('files/all-MiniLM-L6-v2')
@@ -41,9 +32,9 @@ def get_L1_category(item: ItemText):
   embedding = embedding_model.encode(item.text)
   prediction = L1_svc.predict(embedding.reshape(1,-1))[0]
   if prediction == "trivial" or prediction == "irrelevant":
-    logger.info(f"Message: {item.text} deemed irrelevant and sent to LLM for review")
+    print(f"Message: {item.text} deemed irrelevant and sent to LLM for review")
     should_review = check_should_review(item.text)
-    logger.info(f"Message: LLM determined that should_review = {should_review}")
+    print(f"Message: LLM determined that should_review = {should_review}")
     if should_review:
       prediction = "unsure"
   return {'prediction': "irrelevant" if prediction == "trivial" else prediction}
@@ -72,7 +63,7 @@ def getOCR(item: ItemUrl):
 
 @app.post("/ocr-v2")
 def get_ocr(item: ItemUrl):
-  logger.info(f"GenAI OCR called on {item.url}")
+  print("GenAI OCR called on {item.url}")
   results = perform_ocr(item.url)
   if "extracted_message" in results:
     extracted_message = results["extracted_message"]
