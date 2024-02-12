@@ -55,7 +55,7 @@ def perform_ocr(img_url):
     try:
         generated_text = response.text
     except Exception as e:
-        logger.error("Error parsing Gemini response", exc_info=True)
+        print("Error parsing Gemini response:", e)
         return {
             "image_type": None,
             "sender": None,
