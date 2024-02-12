@@ -24,4 +24,4 @@ COPY . /app
 # Copy models downloaded from Cloud Storage into the container image
 COPY /files /app/files
 
-CMD uvicorn app:app --host 0.0.0.0 --port ${PORT:-8080}
+CMD uvicorn app:app --host 0.0.0.0 --port ${PORT:-8001}
