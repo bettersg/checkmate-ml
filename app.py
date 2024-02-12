@@ -67,7 +67,10 @@ def get_ocr(item: ItemUrl):
   results = perform_ocr(item.url)
   if "extracted_message" in results and results["extracted_message"]:
     extracted_message = results["extracted_message"]
-    results["prediction"] = get_L1_category(ItemText(text=extracted_message))
+    print(f"Extracted message: {extracted_message}")
+    prediction = get_L1_category(ItemText(text=extracted_message)).get("prediction","unsure")
+    results["prediction"] = prediction
   else:
+    print(f"No extracted message in results")
     results["prediction"] = "unsure"
   return results
