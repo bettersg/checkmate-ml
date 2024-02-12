@@ -76,6 +76,7 @@ def perform_ocr(img_url):
             return_dict["image_type"] = "others"
         return return_dict
     except Exception as e:
+        print(f"Generated string: {generated_text}")
         print("Error processing JSON data", e)
         return {
             "image_type": None,
