@@ -9,7 +9,7 @@ numpy
 paddlepaddle
 paddleocr>=2.0.1
 openai
-google-cloud-aiplatform
+google-cloud-aiplatform~=1.42.1
 requests
 langchain
 langchain-openai
