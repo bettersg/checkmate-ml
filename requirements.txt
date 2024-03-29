@@ -1,13 +1,11 @@
 fastapi
 uvicorn
 gunicorn
-sentence_transformers
+sentence_transformers~=2.6.1
 pydantic
-scikit-learn
+scikit-learn~=1.2.2
 joblib
 numpy
-paddlepaddle
-paddleocr>=2.0.1
 openai
 google-cloud-aiplatform~=1.42.1
 requests
