@@ -1,5 +1,5 @@
 import vertexai
-from vertexai.preview.generative_models import GenerativeModel, Part, HarmCategory, HarmBlockThreshold
+from vertexai import generative_models
 import json
 import requests
 import os
@@ -20,17 +20,17 @@ if os.environ.get("GOOGLE_APPLICATION_CREDENTIALS") is None:
 else:
     vertexai.init()
 
-multimodal_model = GenerativeModel("gemini-1.0-pro-vision")
+multimodal_model = generative_models.GenerativeModel("gemini-1.0-pro-vision")
 
 # Model config
 model_config = {"temperature": 0}
 
 # Safety config
 safety_config = {
-    HarmCategory.HARM_CATEGORY_HATE_SPEECH: HarmBlockThreshold.BLOCK_ONLY_HIGH,
-    HarmCategory.HARM_CATEGORY_HARASSMENT: HarmBlockThreshold.BLOCK_ONLY_HIGH,
-    HarmCategory.HARM_CATEGORY_SEXUALLY_EXPLICIT: HarmBlockThreshold.BLOCK_ONLY_HIGH,
-    HarmCategory.HARM_CATEGORY_DANGEROUS_CONTENT: HarmBlockThreshold.BLOCK_ONLY_HIGH,
+    generative_models.HarmCategory.HARM_CATEGORY_HATE_SPEECH: generative_models.HarmBlockThreshold.BLOCK_ONLY_HIGH,
+    generative_models.HarmCategory.HARM_CATEGORY_HARASSMENT: generative_models.HarmBlockThreshold.BLOCK_ONLY_HIGH,
+    generative_models.HarmCategory.HARM_CATEGORY_SEXUALLY_EXPLICIT: generative_models.HarmBlockThreshold.BLOCK_ONLY_HIGH,
+    generative_models.HarmCategory.HARM_CATEGORY_DANGEROUS_CONTENT: generative_models.HarmBlockThreshold.BLOCK_ONLY_HIGH,
 }
 
 # Prompts
@@ -45,7 +45,7 @@ def perform_ocr(img_url):
     """
     function to perform OCR on the image
     """
-    image = Part.from_uri(img_url, mime_type="image/jpeg")
+    image = generative_models.Part.from_uri(img_url, mime_type="image/jpeg")
     response = multimodal_model.generate_content(
         [prompt, image], 
         generation_config=model_config,
