@@ -10,19 +10,20 @@ from sentence_transformers import SentenceTransformer
 # from ocr import end_to_end
 from ocr_v2 import perform_ocr
 from trivial_filter import check_should_review
+from models import (
+    ItemText,
+    ItemUrl,
+    EmbeddingResponse,
+    L1CategoryResponse,
+    OCRResponse,
+)
 
 app = FastAPI()
 
 embedding_model = SentenceTransformer('files/all-MiniLM-L6-v2')
 L1_svc = joblib.load('files/L1_svc.joblib')
 
-class ItemText(BaseModel):
-  text: str
-
-class ItemUrl(BaseModel):
-  url: str
-
-@app.post("/embed")
+@app.post("/embed", response_model=EmbeddingResponse)
 def get_embedding(item: ItemText):
   """
   Given a text message, returns its corresponding sentence embedding as a list.
@@ -36,7 +37,7 @@ def get_embedding(item: ItemText):
   embedding= embedding_model.encode(item.text)
   return {'embedding': embedding.tolist()}
 
-@app.post("/getL1Category")
+@app.post("/getL1Category", response_model = L1CategoryResponse)
 def get_L1_category(item: ItemText):
   """
   Given a text message, returns its corresponding L1 category.
@@ -59,7 +60,7 @@ def get_L1_category(item: ItemText):
       prediction = "unsure"
   return {'prediction': "irrelevant" if prediction == "trivial" else prediction}
 
-@app.post("/ocr-v2")
+@app.post("/ocr-v2", response_model = OCRResponse)
 def get_ocr(item: ItemUrl):
   """
   Given a URL pointing to an image, runs the GenAI OCR pipeline on it, and returns the extracted text message and its corresponding L1 category.

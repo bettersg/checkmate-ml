@@ -11,9 +11,7 @@ import json
 llm = ChatOpenAI(
     model = "gpt-3.5-turbo-0125",
     temperature = 0,
-    model_kwargs = {
-        "seed": 11
-    }
+    seed=11
 )
 
 prompts = json.load(open("files/prompts.json"))
