@@ -250,10 +250,10 @@ async def generate_community_note(data_type: str = "text", text: Union[str, None
         "time_taken": duration
     }
   except Exception as e:
-    print(f"Error: {e}")
-    for message in messages:
-      print(message)
-      print("\n\n")
+    # print(f"Error: {e}")
+    # for message in messages:
+    #   print(message)
+    #   print("\n\n")
     return {
         "error": str(e),
         "cost": cost_tracker["total_cost"],
@@ -263,11 +263,11 @@ async def generate_community_note(data_type: str = "text", text: Union[str, None
     }
 
 
-if __name__ == "__main__":
-    import asyncio
-    text = "WP is so much better than PAP"
-    result = asyncio.run(generate_community_note(text=text))
-    # prettify the result
-    for key, value in result.items():
-        print(f"{key}: {value}")
-    # print(result)
+# if __name__ == "__main__":
+#     import asyncio
+#     text = "WP is so much better than PAP"
+#     result = asyncio.run(generate_community_note(text=text))
+#     # prettify the result
+#     for key, value in result.items():
+#         print(f"{key}: {value}")
+#     # print(result)

@@ -22,7 +22,6 @@ async def get_website_screenshot(url):
     payload = {
                   "url": url
               }
-    print("prijsdfkgsjdfg", f"{hostname}/get-screenshot")
     response = requests.post(f"{hostname}/get-screenshot", json=payload, headers=headers)
 
     if response.status_code != 200:

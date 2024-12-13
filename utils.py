@@ -57,7 +57,7 @@ async def call_tool(tool_dict, tool_name, arguments, tool_call_id, cost_tracker)
           "cost": result["cost"]
       })
     if tool_name == "get_website_screenshot":
-      print("printing results", result)
+      # print("printing results", result)
       url = arguments.get("url", "unknown URL")
       if not result["success"]:
         return {
