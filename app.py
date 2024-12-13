@@ -44,17 +44,17 @@ def get_embedding(item: ItemText):
   embedding= embedding_model.encode(item.text)
   return {'embedding': embedding.tolist()}
 
-# @app.post("/getL1Category")
-# def get_L1_category(item: ItemText):
-#   embedding = embedding_model.encode(item.text)
-#   prediction = L1_svc.predict(embedding.reshape(1,-1))[0]
-#   if prediction == "trivial" or prediction == "irrelevant":
-#     print(f"Message: {item.text} deemed irrelevant and sent to LLM for review")
-#     should_review = check_should_review(item.text)
-#     print(f"Message: LLM determined that should_review = {should_review}")
-#     if should_review:
-#       prediction = "unsure"
-#   return {'prediction': "irrelevant" if prediction == "trivial" else prediction}
+@app.post("/getL1Category")
+def get_L1_category(item: ItemText):
+  embedding = embedding_model.encode(item.text)
+  prediction = L1_svc.predict(embedding.reshape(1,-1))[0]
+  if prediction == "trivial" or prediction == "irrelevant":
+    print(f"Message: {item.text} deemed irrelevant and sent to LLM for review")
+    should_review = check_should_review(item.text)
+    print(f"Message: LLM determined that should_review = {should_review}")
+    if should_review:
+      prediction = "unsure"
+  return {'prediction': "irrelevant" if prediction == "trivial" else prediction}
 
 # @app.post("/ocr")
 # def getOCR(item: ItemUrl):
