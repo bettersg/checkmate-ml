@@ -9,11 +9,9 @@ from langchain_openai.chat_models import ChatOpenAI
 import json
 
 llm = ChatOpenAI(
-    model = "gpt-3.5-turbo-0125",
+    model = "gpt-4o-mini",
     temperature = 0,
-    model_kwargs = {
-        "seed": 11
-    }
+    seed = 11
 )
 
 prompts = json.load(open("files/prompts.json"))
