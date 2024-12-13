@@ -8,7 +8,7 @@ from fastapi import FastAPI
 from pydantic import BaseModel, Field
 from sentence_transformers import SentenceTransformer
 # from ocr import end_to_end
-# from ocr_v2 import perform_ocr
+from ocr_v2 import perform_ocr
 from trivial_filter import check_should_review
 from community_note import generate_community_note
 from fastapi import HTTPException
@@ -72,19 +72,19 @@ def get_embedding(item: ItemText):
 #     'prediction': "irrelevant" if prediction == "trivial" else prediction,
 #   }
 
-# @app.post("/ocr-v2")
-# def get_ocr(item: ItemUrl):
-#   print(f"GenAI OCR called on {item.url}")
-#   results = perform_ocr(item.url)
-#   if "extracted_message" in results and results["extracted_message"]:
-#     extracted_message = results["extracted_message"]
-#     print(f"Extracted message: {extracted_message}")
-#     prediction = get_L1_category(ItemText(text=extracted_message)).get("prediction","unsure")
-#     results["prediction"] = prediction
-#   else:
-#     print(f"No extracted message in results")
-#     results["prediction"] = "unsure"
-#   return results
+@app.post("/ocr-v2")
+def get_ocr(item: ItemUrl):
+  print(f"GenAI OCR called on {item.url}")
+  results = perform_ocr(item.url)
+  if "extracted_message" in results and results["extracted_message"]:
+    extracted_message = results["extracted_message"]
+    print(f"Extracted message: {extracted_message}")
+    prediction = get_L1_category(ItemText(text=extracted_message)).get("prediction","unsure")
+    results["prediction"] = prediction
+  else:
+    print(f"No extracted message in results")
+    results["prediction"] = "unsure"
+  return results
 
 @app.post("/generate-community-note")
 async def generate_community_note_endpoint(request: CommunityNoteRequest):
@@ -101,6 +101,6 @@ async def generate_community_note_endpoint(request: CommunityNoteRequest):
         raise HTTPException(status_code=500, detail=str(e))
     
 
-if __name__ == "__main__":
-    import uvicorn
-    uvicorn.run("app:app", host="127.0.0.1", port=8000, reload=True)
+# if __name__ == "__main__":
+#     import uvicorn
+#     uvicorn.run("app:app", host="127.0.0.1", port=8000, reload=True)
