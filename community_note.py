@@ -9,6 +9,7 @@ from openai import OpenAI
 from langfuse.openai import openai
 from langfuse import Langfuse
 from dotenv import load_dotenv
+from chinese_community_note import translate_to_chinese
 
 # Load environment variables from .env file
 load_dotenv()
@@ -214,6 +215,7 @@ async def generate_community_note(session_id, data_type: str = "text", text: Uni
           tool_call_id = tool_call.id
           if tool_name == "submit_community_note":
             final_messages, final_note = await summary_note(session_id, messages, cost_tracker)
+            chinese_note = translate_to_chinese(final_note)
             # arguments["final_note"] = final_note
             # if "note" in arguments:
             #     arguments["initial_note"] = arguments.pop("note")
@@ -227,7 +229,7 @@ async def generate_community_note(session_id, data_type: str = "text", text: Uni
             # arguments["time_taken"] = duration
             final_arguments = {
                 "en": final_note,
-                "cn": "this is a filler chinese statement 冰淇淋",
+                "cn": chinese_note,
                 "sources": arguments.get("sources", [])
             }
             return final_arguments
