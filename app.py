@@ -12,6 +12,7 @@ from ocr_v2 import perform_ocr
 from trivial_filter import check_should_review
 from community_note import generate_community_note
 from fastapi import HTTPException
+import datetime
 
 
 app = FastAPI()
@@ -89,10 +90,11 @@ def get_ocr(item: ItemUrl):
 @app.post("/generate-community-note")
 async def generate_community_note_endpoint(request: CommunityNoteRequest):
     try:
+        session_id = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
         if request.text:
-            result = await generate_community_note(data_type="text", text=request.text)
+            result = await generate_community_note(session_id, data_type="text", text=request.text)
         elif request.image_url:
-            result = await generate_community_note(data_type="image", image_url=request.image_url, caption=request.caption)
+            result = await generate_community_note(session_id, data_type="image", image_url=request.image_url, caption=request.caption)
         else:
             raise HTTPException(status_code=400, detail="Either 'text' or 'image_url' must be provided.")
         
