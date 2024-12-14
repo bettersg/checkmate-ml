@@ -13,3 +13,4 @@ langchain
 langchain-openai
 python-dotenv
 langfuse
+deep-translator
