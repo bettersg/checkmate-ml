@@ -6,17 +6,34 @@ from tool_search_google import search_google
 from utils import calculate_openai_api_cost, call_tool
 import os
 from openai import OpenAI
+from langfuse.openai import openai
+from langfuse import Langfuse
+from dotenv import load_dotenv
 
-tool_dict = {}
-tool_dict["get_website_screenshot"] = get_website_screenshot
-tool_dict["search_google"] = search_google
+# Load environment variables from .env file
+load_dotenv()
 
+# Langfuse setup
+os.environ["LANGFUSE_SECRET_KEY"] = os.getenv("LANGFUSE_SECRET_KEY")
+os.environ["LANGFUSE_PUBLIC_KEY"] = os.getenv("LANGFUSE_PUBLIC_KEY")
+os.environ["LANGFUSE_HOST"] = os.getenv("LANGFUSE_HOST")
+os.environ["OPENAI_API_KEY"] = os.getenv("OPENAI_API_KEY")
+
+langfuse = Langfuse()
+
+# Tool dictionary
+tool_dict = {
+    "get_website_screenshot": get_website_screenshot,
+    "search_google": search_google,
+}
 MODEL = "gpt-4o"
 
 
-client = OpenAI(
-    api_key=os.environ.get('OPENAI_API_KEY'),  # This is the default and can be omitted
-)
+# client = OpenAI(
+#     api_key=os.environ.get('OPENAI_API_KEY'),  # This is the default and can be omitted
+# )
+
+
 
 tools = [
     {
@@ -87,7 +104,7 @@ tools = [
     }
 ]
 
-async def summary_note(messages, cost_tracker):
+async def summary_note(session_id, messages, cost_tracker):
     """
     Generates a summary sentence with emoji for the final note.
 
@@ -97,20 +114,12 @@ async def summary_note(messages, cost_tracker):
     Returns:
         tuple: Sanity check result and summary sentence.
     """
-    summary_prompt = (
-"""Review the conversation history below. Based on the community note generated, generate a summary sentence that starts with an emoji that succinctly conveys the key message. Output the final community note, which starts with an emoji, then a summary sentence, then the rest of the succinct, clear note. (less than 50 words)
-Guidelines for emoji at the start of summary sentence:
-- Use 🚨 or ❌ for scams or highly harmful content.
-- Use ⚠️ for content that warrants caution but is not outright harmful.
-- Use ✅ for legitimate or safe content.
-- If unsure, avoid adding an emoji.
-Reminder: do not integrate the sources into the note."""
-)
-
-    prompt = f"{summary_prompt}\n\n{messages}"
-    response = client.chat.completions.create(
-        model=MODEL,  # Use your preferred model
+    summary_prompt = langfuse.get_prompt("summary_community_note", label="production")
+    prompt = f"{summary_prompt.prompt}\n\n{messages}"
+    response = openai.chat.completions.create(
+        model=summary_prompt.config['model'],
         messages=[{"role": "system", "content": prompt}],
+        session_id=session_id
     )
 
     content = response.choices[0].message.to_dict()["content"]
@@ -132,17 +141,7 @@ Reminder: do not integrate the sources into the note."""
 
 import time
 
-# Define the system prompt as a variable
-system_prompt = (
-"""You are an agent in Singapore that helps the user check information that they send in on WhatsApp, which could either be a text message, or an image.
-Your task is to:
-1. Strictly use the supplied tools to help you check the information.
-2. Submit an X-style community note to conclude your task.
-- For irrelevant messages such as 'hello,' 'thank you,' let the user know that there’s nothing to verify.
-- For all other messages, evaluate the content using tools and provide a concise, straightforward summary of the issue or risk (50 words or less)."""
-)
-
-async def generate_community_note(data_type: str = "text", text: Union[str, None] = None, image_url: Union[str, None] = None, caption: Union[str, None] = None):
+async def generate_community_note(session_id, data_type: str = "text", text: Union[str, None] = None, image_url: Union[str, None] = None, caption: Union[str, None] = None):
   """Generates a community note based on the provided data type (text or image).
 
   Args:
@@ -159,7 +158,10 @@ async def generate_community_note(data_type: str = "text", text: Union[str, None
                    "cost_trace": []  # To store the cost details
                   }
   messages = []
-  messages.append({"role": "system", "content": system_prompt})
+  system_prompt = langfuse.get_prompt("community_note", label="production")
+  messages.append({"role": "system", "content": system_prompt.prompt})
+  # print("reached til here", messages)
+
 
   if data_type == "text":
     if text is None:
@@ -187,11 +189,12 @@ async def generate_community_note(data_type: str = "text", text: Union[str, None
   # Main loop to process messages and handle function calls
   try:
     while len(messages) < 20 and not completed:
-      response = client.chat.completions.create(
-        model=MODEL,
+      response = openai.chat.completions.create(
+        model=system_prompt.config['model'],
         messages=messages,
         tools=tools,
-        tool_choice="required"
+        tool_choice="required",
+        session_id=session_id
       )
       messages.append(response.choices[0].message)
       openai_cost = calculate_openai_api_cost(response, MODEL)
@@ -210,7 +213,7 @@ async def generate_community_note(data_type: str = "text", text: Union[str, None
           arguments = json.loads(tool_call.function.arguments)
           tool_call_id = tool_call.id
           if tool_name == "submit_community_note":
-            final_messages, final_note = await summary_note(messages, cost_tracker)
+            final_messages, final_note = await summary_note(session_id, messages, cost_tracker)
             arguments["final_note"] = final_note
             if "note" in arguments:
                 arguments["initial_note"] = arguments.pop("note")
