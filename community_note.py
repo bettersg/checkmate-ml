@@ -214,18 +214,23 @@ async def generate_community_note(session_id, data_type: str = "text", text: Uni
           tool_call_id = tool_call.id
           if tool_name == "submit_community_note":
             final_messages, final_note = await summary_note(session_id, messages, cost_tracker)
-            arguments["final_note"] = final_note
-            if "note" in arguments:
-                arguments["initial_note"] = arguments.pop("note")
-            else:
-                arguments["initial_note"] = "Error"
-            arguments["sources"] = "\n".join(arguments.get("sources", []))
-            arguments["trace"] = final_messages
-            arguments["cost"] = cost_tracker["total_cost"]
-            arguments["cost_trace"] = cost_tracker["cost_trace"]
-            duration = time.time() - start_time  # Calculate duration
-            arguments["time_taken"] = duration
-            return arguments
+            # arguments["final_note"] = final_note
+            # if "note" in arguments:
+            #     arguments["initial_note"] = arguments.pop("note")
+            # else:
+            #     arguments["initial_note"] = "Error"
+            # arguments["sources"] = "\n".join(arguments.get("sources", []))
+            # arguments["trace"] = final_messages
+            # arguments["cost"] = cost_tracker["total_cost"]
+            # arguments["cost_trace"] = cost_tracker["cost_trace"]
+            # duration = time.time() - start_time  # Calculate duration
+            # arguments["time_taken"] = duration
+            final_arguments = {
+                "en": final_note,
+                "cn": "this is a filler chinese statement 冰淇淋",
+                "sources": arguments.get("sources", [])
+            }
+            return final_arguments
           else:
             tool_call_promise = call_tool(tool_dict, tool_name, arguments, tool_call_id, cost_tracker)
             tool_call_promises.append(tool_call_promise)
