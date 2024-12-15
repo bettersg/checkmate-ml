@@ -46,83 +46,19 @@ class CommunityNoteItem(BaseModel):
 # )
 
 
+# get tools from langfuse
+search_google_tool_str = langfuse.get_prompt("search_google_tool", label="production").prompt
+get_website_screenshot_tool_str = langfuse.get_prompt("get_website_screenshot_tool", label="production").prompt
+submit_community_note_tool_str = langfuse.get_prompt("submit_community_note_tool", label="production").prompt
 
-tools = [
-    {
-        "type": "function",
-        "strict": True,
-        "function": {
-            "name": "search_google",
-            "description": "Searches Google for the given query and returns organic search results using serper.dev. Call this when you need to retrieve information from Google search results.",
-            "parameters": {
-                "type": "object",
-                "properties": {
-                    "q": {
-                        "type": "string",
-                        "description": "The search query to use on Google."
-                    }
-                },
-                "required": ["q"],
-                "additionalProperties": False
-            }
-        }
-    },
-    {
-        "type": "function",
-        "strict": True,
-        "function": {
-            "name": "get_website_screenshot",
-            "description": "Takes a screenshot of the url provided. Call this when you need look at the web page.",
-            "parameters": {
-                "type": "object",
-                "properties": {
-                    "url": {
-                        "type": "string",
-                        "description": "The URL of the website to take a screenshot of."
-                    }
-                },
-                "required": ["url"],
-                "additionalProperties": False
-            }
-        }
-    },
-    {
-        "type": "function",
-        "strict": True,
-        "function": {
-            "name": "submit_community_note",
-            "description": "Submits a community note, which concludes the task.",
-            "parameters": {
-                "type": "object",
-                "properties": {
-                    "note": {
-                        "type": "string",
-                        "description": "The content of the community note. This should be succinct and provide the user enough context to stay safe and informed."
-                    },
-                    "sources": {
-                        "type": "array",
-                        "items": {
-                            "type": "string",
-                            "format": "uri",
-                            "description": "A link from which you sourced your community note source for the note."
-                        },
-                        "description": "A list of links from which your community note is based."
-                    },                    
-                    "isControversial": {
-                        "type": "boolean",
-                        "description": "True if the content contains political or religious viewpoints likely to be divisive."
-                    },
-                    "isVideo": {
-                        "type": "boolean",
-                        "description": "True if the content or URL points to a video (e.g., YouTube, TikTok, Instagram Reels, Facebook videos)."
-                    }
-                },
-                "required": ["note", "sources", "isControversial", "isVideo"],
-                "additionalProperties": False
-            }
-        }
-    }
-]
+# convert to json
+search_google_tool = json.loads(search_google_tool_str)
+get_website_screenshot_tool = json.loads(get_website_screenshot_tool_str)
+submit_community_note_tool = json.loads(submit_community_note_tool_str)
+
+tools = [search_google_tool, get_website_screenshot_tool, submit_community_note_tool]
+print(tools)
+
 
 async def summary_note(session_id, messages, cost_tracker):
     """
@@ -213,6 +149,7 @@ async def generate_community_note(session_id, data_type: str = "text", text: Uni
       response = openai.chat.completions.create(
         model=system_prompt.config['model'],
         messages=messages,
+        temperature=0,
         tools=tools,
         tool_choice="required",
         session_id=session_id
