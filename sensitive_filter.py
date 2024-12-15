@@ -7,20 +7,32 @@ from langchain.prompts.chat import (
 from langchain_core.output_parsers import JsonOutputParser
 from langchain.schema import SystemMessage
 from langchain_openai.chat_models import ChatOpenAI
+from langfuse.openai import openai
+from langfuse import Langfuse
 
-# Load prompts for political/religious filter
-prompts = json.load(open("files/prompts.json"))
-relevant_prompts = prompts.get("sensitive-filter", {})
 
-# Validate keys exist in the JSON structure
-system_message = relevant_prompts.get("system", "")
-assert system_message
-few_shot_examples = relevant_prompts.get("examples", [])
-assert len(few_shot_examples) > 0
-human_template = relevant_prompts.get("human_template", "")
-assert human_template
-ai_template = relevant_prompts.get("ai_template", "")
-assert ai_template
+langfuse = Langfuse()
+
+# Retrieve prompt from Langfuse
+sensitivity_prompt = langfuse.get_prompt("sensitivity_prompt", label="production")
+
+# convert str to dict
+prompt = json.loads(sensitivity_prompt.prompt)
+
+
+# Validate the retrieved prompt
+assert sensitivity_prompt, "Prompt could not be retrieved from Langfuse."
+assert "system" in prompt, "System message is missing in the prompt."
+assert "examples" in prompt, "Few-shot examples are missing in the prompt."
+assert "human_template" in prompt, "Human template is missing in the prompt."
+assert "ai_template" in prompt, "AI template is missing in the prompt."
+
+# Extract details from the retrieved prompt
+system_message = prompt["system"]
+few_shot_examples = prompt["examples"]
+human_template = prompt["human_template"]
+ai_template = prompt["ai_template"]
+
 
 # Define LLM model
 llm = ChatOpenAI(
