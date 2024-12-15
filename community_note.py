@@ -10,6 +10,9 @@ from langfuse.openai import openai
 from langfuse import Langfuse
 from dotenv import load_dotenv
 from chinese_community_note import translate_to_chinese
+from pydantic import BaseModel
+from typing import List
+from fastapi import HTTPException
 
 # Load environment variables from .env file
 load_dotenv()
@@ -28,6 +31,12 @@ tool_dict = {
     "search_google": search_google,
 }
 MODEL = "gpt-4o"
+
+# final return item definitions
+class CommunityNoteItem(BaseModel):
+    en: str
+    cn: str
+    links: List[str]
 
 
 # client = OpenAI(
@@ -125,10 +134,11 @@ async def summary_note(session_id, messages, cost_tracker):
 
     content = response.choices[0].message.to_dict()["content"]
 
-    openai_cost = calculate_openai_api_cost(response, "gpt-4o")
+    openai_cost = calculate_openai_api_cost(response, summary_prompt.config['model'])
     cost_tracker["total_cost"] += openai_cost
     cost_tracker["cost_trace"].append({
-        "model": "final_openai_call",
+        "type": "summarizer_openai_call",
+        "model": summary_prompt.config['model'],
         "cost": openai_cost
     })
 
@@ -198,10 +208,11 @@ async def generate_community_note(session_id, data_type: str = "text", text: Uni
         session_id=session_id
       )
       messages.append(response.choices[0].message)
-      openai_cost = calculate_openai_api_cost(response, MODEL)
+      openai_cost = calculate_openai_api_cost(response, system_prompt.config['model'])
       cost_tracker["total_cost"] += openai_cost
       cost_tracker["cost_trace"].append({
-          "model": "openai_api",
+          "type": "main_openai_api",
+          "model": system_prompt.config['model'],
           "cost": openai_cost
       })
       # Check if the response contains tool calls
@@ -215,7 +226,9 @@ async def generate_community_note(session_id, data_type: str = "text", text: Uni
           tool_call_id = tool_call.id
           if tool_name == "submit_community_note":
             final_messages, final_note = await summary_note(session_id, messages, cost_tracker)
-            chinese_note = translate_to_chinese(final_note)
+            chinese_note, final_messages = translate_to_chinese(session_id, final_note, final_messages, cost_tracker)
+            print(final_messages)
+            print(cost_tracker)
             # arguments["final_note"] = final_note
             # if "note" in arguments:
             #     arguments["initial_note"] = arguments.pop("note")
@@ -227,12 +240,8 @@ async def generate_community_note(session_id, data_type: str = "text", text: Uni
             # arguments["cost_trace"] = cost_tracker["cost_trace"]
             # duration = time.time() - start_time  # Calculate duration
             # arguments["time_taken"] = duration
-            final_arguments = {
-                "en": final_note,
-                "cn": chinese_note,
-                "sources": arguments.get("sources", [])
-            }
-            return final_arguments
+            final_note_items = CommunityNoteItem(en=final_note, cn=chinese_note, links=arguments.get("sources", []))
+            return final_note_items
           else:
             tool_call_promise = call_tool(tool_dict, tool_name, arguments, tool_call_id, cost_tracker)
             tool_call_promises.append(tool_call_promise)
@@ -259,18 +268,29 @@ async def generate_community_note(session_id, data_type: str = "text", text: Uni
         "cost_trace": cost_tracker["cost_trace"],
         "time_taken": duration
     }
+  
+  except ValueError as e:
+    raise HTTPException(
+        status_code=400,
+        detail={
+            "error": "Bad Request",
+            "message": str(e),
+            "code": "INVALID_INPUT"
+        }
+    )
   except Exception as e:
     # print(f"Error: {e}")
     # for message in messages:
     #   print(message)
     #   print("\n\n")
-    return {
-        "error": str(e),
-        "cost": cost_tracker["total_cost"],
-        "cost_trace": cost_tracker["cost_trace"],
-        "trace": messages,
-        "time_taken": duration
-    }
+    raise HTTPException(
+        status_code=500,
+        detail={
+            "error": "Internal Server Error",
+            "message": str(e),
+            "code": "GENERATION_FAILED"
+        }
+    )
 
 
 # if __name__ == "__main__":
