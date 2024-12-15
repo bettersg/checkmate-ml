@@ -13,6 +13,7 @@ from trivial_filter import check_should_review
 from community_note import generate_community_note
 from fastapi import HTTPException
 import datetime
+from sensitive_filter import check_is_sensitive
 
 
 app = FastAPI()
@@ -56,6 +57,12 @@ def get_L1_category(item: ItemText):
     if should_review:
       prediction = "unsure"
   return {'prediction': "irrelevant" if prediction == "trivial" else prediction}
+
+@app.post("/sensitivity-filter")
+def get_sensitivity(item: ItemText):
+  is_sensitive = check_is_sensitive(item.text)
+  return {'is_sensitive': is_sensitive}
+   
 
 # @app.post("/ocr")
 # def getOCR(item: ItemUrl):
@@ -101,7 +108,7 @@ async def generate_community_note_endpoint(request: CommunityNoteRequest):
         return result
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
-    
+
 
 # if __name__ == "__main__":
 #     import uvicorn
