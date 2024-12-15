@@ -40,6 +40,7 @@ def translate_to_chinese(session_id, text, messages_trace, cost_tracker):
         # Make the GPT-4o-mini API call
         response = openai.chat.completions.create(
             model=translation_prompt.config['model'],
+            temperature=translation_prompt.config.get("temperature", 0),
             messages=messages,
             session_id=session_id
         )
