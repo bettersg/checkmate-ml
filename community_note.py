@@ -37,6 +37,8 @@ class CommunityNoteItem(BaseModel):
     en: str
     cn: str
     links: List[str]
+    isControversial: bool = False
+    isVideo: bool = False
 
 
 # client = OpenAI(
@@ -105,9 +107,17 @@ tools = [
                             "description": "A link from which you sourced your community note source for the note."
                         },
                         "description": "A list of links from which your community note is based."
+                    },                    
+                    "isControversial": {
+                        "type": "boolean",
+                        "description": "True if the content contains political or religious viewpoints likely to be divisive."
+                    },
+                    "isVideo": {
+                        "type": "boolean",
+                        "description": "True if the content or URL points to a video (e.g., YouTube, TikTok, Instagram Reels, Facebook videos)."
                     }
                 },
-                "required": ["note", "sources"],
+                "required": ["note", "sources", "isControversial", "isVideo"],
                 "additionalProperties": False
             }
         }
@@ -240,7 +250,11 @@ async def generate_community_note(session_id, data_type: str = "text", text: Uni
             # arguments["cost_trace"] = cost_tracker["cost_trace"]
             # duration = time.time() - start_time  # Calculate duration
             # arguments["time_taken"] = duration
-            final_note_items = CommunityNoteItem(en=final_note, cn=chinese_note, links=arguments.get("sources", []))
+            final_note_items = CommunityNoteItem(en=final_note, 
+                                                 cn=chinese_note, 
+                                                 links=arguments.get("sources", []), 
+                                                 isControversial=arguments.get("isControversial", False), 
+                                                 isVideo=arguments.get("isVideo", False))
             return final_note_items
           else:
             tool_call_promise = call_tool(tool_dict, tool_name, arguments, tool_call_id, cost_tracker)
