@@ -183,6 +183,9 @@ async def generate_community_note(session_id, data_type: str = "text", text: Uni
 
             # remove user links from sources
             user_input = final_messages[1]["content"]
+            # if user_input is str type continue, if its list, get the first element then get text from it
+            if isinstance(user_input, list):
+              user_input = user_input[0]["text"]
             final_sources = remove_user_links_from_sources(user_input, arguments.get("sources", []))
             # arguments["final_note"] = final_note
             # if "note" in arguments:
