@@ -13,6 +13,7 @@ from chinese_community_note import translate_to_chinese
 from pydantic import BaseModel
 from typing import List
 from fastapi import HTTPException
+from utils import remove_user_links_from_sources
 
 # Load environment variables from .env file
 load_dotenv()
@@ -172,10 +173,16 @@ async def generate_community_note(session_id, data_type: str = "text", text: Uni
           arguments = json.loads(tool_call.function.arguments)
           tool_call_id = tool_call.id
           if tool_name == "submit_community_note":
+
+            # summarise the note
             final_messages, final_note = await summary_note(session_id, messages, cost_tracker)
+
+            # translate the note to chinese
             chinese_note, final_messages = translate_to_chinese(session_id, final_note, final_messages, cost_tracker)
-            print(final_messages)
-            print(cost_tracker)
+
+            # remove user links from sources
+            user_input = final_messages[1]["content"]
+            final_sources = remove_user_links_from_sources(user_input, arguments.get("sources", []))
             # arguments["final_note"] = final_note
             # if "note" in arguments:
             #     arguments["initial_note"] = arguments.pop("note")
@@ -189,7 +196,7 @@ async def generate_community_note(session_id, data_type: str = "text", text: Uni
             # arguments["time_taken"] = duration
             final_note_items = CommunityNoteItem(en=final_note, 
                                                  cn=chinese_note, 
-                                                 links=arguments.get("sources", []), 
+                                                 links=final_sources, 
                                                  isControversial=arguments.get("isControversial", False), 
                                                  isVideo=arguments.get("isVideo", False))
             return final_note_items
@@ -244,11 +251,10 @@ async def generate_community_note(session_id, data_type: str = "text", text: Uni
     )
 
 
-# if __name__ == "__main__":
-#     import asyncio
-#     text = "WP is so much better than PAP"
-#     result = asyncio.run(generate_community_note(text=text))
-#     # prettify the result
-#     for key, value in result.items():
-#         print(f"{key}: {value}")
-#     # print(result)
+if __name__ == "__main__":
+    import asyncio
+    text = "https://go.gov.sg/hsg-enrol" 
+    result = asyncio.run(generate_community_note("123test", text=text))
+    # prettify the result
+    print(result)
+    # print(result)

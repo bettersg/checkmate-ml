@@ -95,3 +95,62 @@ async def call_tool(tool_dict, tool_name, arguments, tool_call_id, cost_tracker)
         "content": f"Tool {tool_name} generated an exception: {exc}",
         "tool_call_id": tool_call_id
     }
+
+import re
+from urllib.parse import urlparse
+
+def normalize_url(url):
+    """
+    Normalize a URL by removing scheme and 'www' to standardize it for comparison.
+
+    Args:
+        url (str): The URL to normalize.
+
+    Returns:
+        str: The normalized URL.
+    """
+    parsed = urlparse(url)
+    netloc = parsed.netloc.replace("www.", "") if parsed.netloc else ""
+    path = parsed.path
+    return f"{netloc}{path}".strip("/")
+
+
+def extract_urls(text):
+    """
+    Extract URLs from a given text using a regex pattern.
+
+    Args:
+        text (str): The input text to search for URLs.
+
+    Returns:
+        list: A list of extracted URLs.
+    """
+    url_pattern = re.compile(
+        r'(https?://[^\s]+|www\.[^\s]+|[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/[^\s]*)'
+    )
+    return url_pattern.findall(text)
+
+
+def remove_user_links_from_sources(user_input, sources):
+    """
+    Remove links in the sources list that match or are derived from URLs in the user's input.
+
+    Args:
+        user_input (str): The input provided by the user.
+        sources (list): The list of source URLs.
+
+    Returns:
+        list: The filtered sources list without user-derived links.
+    """
+    # Extract and normalize URLs from user input
+    extracted_urls = [normalize_url(url) for url in extract_urls(user_input)]
+    print(f"Extracted URLs: {extracted_urls}")
+
+    for link in sources:
+        print(f"source: {normalize_url(link)}")
+    
+    # Filter out sources that match any normalized user input URL
+    filtered_sources = [
+        source for source in sources if normalize_url(source) not in extracted_urls
+    ]
+    return filtered_sources
