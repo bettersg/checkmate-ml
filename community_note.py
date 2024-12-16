@@ -40,6 +40,7 @@ class CommunityNoteItem(BaseModel):
     links: List[str]
     isControversial: bool = False
     isVideo: bool = False
+    isAccessBlocked: bool = False
 
 
 # client = OpenAI(
@@ -198,7 +199,8 @@ async def generate_community_note(session_id, data_type: str = "text", text: Uni
                                                  cn=chinese_note, 
                                                  links=final_sources, 
                                                  isControversial=arguments.get("isControversial", False), 
-                                                 isVideo=arguments.get("isVideo", False))
+                                                 isVideo=arguments.get("isVideo", False),
+                                                 isAccessBlocked=arguments.get("isAccessBlocked", False))
             return final_note_items
           else:
             tool_call_promise = call_tool(tool_dict, tool_name, arguments, tool_call_id, cost_tracker)
