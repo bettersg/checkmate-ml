@@ -109,11 +109,17 @@ def normalize_url(url):
     Returns:
         str: The normalized URL.
     """
-    parsed = urlparse(url)
-    netloc = parsed.netloc.replace("www.", "") if parsed.netloc else ""
-    path = parsed.path
-    return f"{netloc}{path}".strip("/")
+    # Ensure the URL has a scheme, default to "http" if missing
+    if not url.startswith(('http://', 'https://')):
+        url = "http://" + url
 
+    # Parse the URL
+    parsed = urlparse(url)
+    netloc = parsed.netloc.replace("www.", "")  # Remove 'www.' from netloc
+    path = parsed.path
+
+    # Reconstruct the URL without the scheme
+    return f"{netloc}{path}".strip("/")
 
 def extract_urls(text):
     """
@@ -126,9 +132,14 @@ def extract_urls(text):
         list: A list of extracted URLs.
     """
     url_pattern = re.compile(
-        r'(https?://[^\s]+|www\.[^\s]+|[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/[^\s]*)'
+        r'(?i)\b(?:https?://|www\d{0,3}[.]|[a-z0-9.\-]+[.][a-z]{2,4}/)'
+        r'(?:[^\s()<>]+|\((?:[^\s()<>]+|\([^\s()<>]+\))*\))+'
+        r'(?:\((?:[^\s()<>]+|\([^\s()<>]+\))*\)|[^\s`!()\[\]{};:\'\".,<>?«»“”‘’])'
     )
-    return url_pattern.findall(text)
+    matches = re.findall(url_pattern, text)
+    
+    # Ensure matches are treated as strings
+    return [match if isinstance(match, str) else match[0] for match in matches]
 
 
 def remove_user_links_from_sources(user_input, sources):
@@ -143,14 +154,20 @@ def remove_user_links_from_sources(user_input, sources):
         list: The filtered sources list without user-derived links.
     """
     # Extract and normalize URLs from user input
+    # print("step 1 extract url from user input", extract_urls(user_input))
+    # print("step 2 normalise", [normalize_url(url) for url in extract_urls(user_input)])
     extracted_urls = [normalize_url(url) for url in extract_urls(user_input)]
-    print(f"Extracted URLs: {extracted_urls}")
+    # print(f"Extracted URLs: {extracted_urls}")
 
-    for link in sources:
-        print(f"source: {normalize_url(link)}")
+    # for link in sources:
+    #     print(f"source: {normalize_url(link)}")
     
     # Filter out sources that match any normalized user input URL
     filtered_sources = [
         source for source in sources if normalize_url(source) not in extracted_urls
     ]
     return filtered_sources
+
+# user = "www.facebook.com/reel/2640226886142146?fs=e&mibextid=z9DgKg&fs=e&s=7MtrtK"
+# sources = ["https://www.facebook.com/reel/2640226886142146?fs=e&mibextid=z9DgKg&fs=e&s=7MtrtK", "https://www.google.com"]
+# print(remove_user_links_from_sources(user, sources)) # Expected: ['https://www.google.com']
