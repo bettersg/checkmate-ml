@@ -51,35 +51,17 @@ def get_L1_category(item: ItemText):
   embedding = embedding_model.encode(item.text)
   prediction = L1_svc.predict(embedding.reshape(1,-1))[0]
   print(f"Prediction: {prediction}")
-  if prediction == "trivial" or prediction == "irrelevant":
-    print(f"Message: {item.text} deemed irrelevant and sent to LLM for review")
-    should_review = check_should_review(item.text)
-    print(f"Message: LLM determined that should_review = {should_review}")
-    return {'needsChecking': should_review}
-  else:
-     return {'needsChecking': True}
+  return {'prediction': "irrelevant" if prediction == "trivial" else prediction}
 
 @app.post("/sensitivity-filter")
 def get_sensitivity(item: ItemText):
   is_sensitive = check_is_sensitive(item.text)
   return {'is_sensitive': is_sensitive}
-   
 
-# @app.post("/ocr")
-# def getOCR(item: ItemUrl):
-#   output, is_convo, extracted_message, sender = end_to_end(item.url)
-#   if extracted_message:
-#     embedding = embedding_model.encode(extracted_message)
-#     prediction = L1_svc.predict(embedding.reshape(1,-1))[0]
-#   else:
-#     prediction = "unsure"
-#   return {
-#     'output': output,
-#     'is_convo': is_convo,
-#     'extracted_message': extracted_message,
-#     'sender': sender,
-#     'prediction': "irrelevant" if prediction == "trivial" else prediction,
-#   }
+@app.post("/getNeedsChecking")
+def get_needs_checking(item: ItemText):
+  should_review = check_should_review(item.text)
+  return {'needsChecking': should_review}
 
 @app.post("/ocr-v2")
 def get_ocr(item: ItemUrl):
@@ -95,7 +77,7 @@ def get_ocr(item: ItemUrl):
     results["prediction"] = "unsure"
   return results
 
-@app.post("/generate-community-note")
+@app.post("/getCommunityNote")
 async def generate_community_note_endpoint(request: CommunityNoteRequest):
     try:
         session_id = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
@@ -111,6 +93,6 @@ async def generate_community_note_endpoint(request: CommunityNoteRequest):
         raise HTTPException(status_code=500, detail=str(e))
 
 
-# if __name__ == "__main__":
-#     import uvicorn
-#     uvicorn.run("app:app", host="127.0.0.1", port=8000, reload=True)
+if __name__ == "__main__":
+    import uvicorn
+    uvicorn.run("app:app", host="127.0.0.1", port=8000, reload=True)

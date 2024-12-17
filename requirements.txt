@@ -7,7 +7,7 @@ scikit-learn~=1.2.2
 joblib
 numpy
 openai
-google-cloud-aiplatform~=1.42.1
+google-cloud-aiplatform~=1.74.0
 requests
 langchain
 langchain-openai

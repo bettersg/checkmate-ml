@@ -64,7 +64,7 @@ def check_should_review(message):
     try:
         response = chain.invoke({"message": message})
         # print("response:", response)
-        return response.get("to_review", False)
+        return response.get("to_review", True)
     except Exception as e:
         print("Error occured in chain", e)
         return False
