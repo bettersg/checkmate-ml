@@ -14,7 +14,7 @@ from community_note import generate_community_note
 from fastapi import HTTPException
 import datetime
 from sensitive_filter import check_is_sensitive
-
+from typing import Optional
 
 app = FastAPI()
 
@@ -36,9 +36,9 @@ class ItemUrl(BaseModel):
 
 
 class CommunityNoteRequest(BaseModel):
-    text: str = Field(default=None, description="Text content for generating a community note")
-    image_url: str = Field(default=None, description="Image URL for generating a community note")
-    caption: str = Field(default=None, description="Caption for the image (optional)")
+    text: Optional[str] = Field(default=None, description="Text content for generating a community note")
+    image_url: Optional[str]  = Field(default=None, description="Image URL for generating a community note")
+    caption: Optional[str] = Field(default=None, description="Caption for the image (optional)")
 
 
 @app.post("/embed")
