@@ -12,3 +12,4 @@ requests
 langchain
 langchain-openai
 python-dotenv
+langfuse

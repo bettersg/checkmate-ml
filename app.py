@@ -75,7 +75,6 @@ def get_ocr(item: ItemUrl):
 def get_redact(item: ItemText):
   response, tokens_used = redact(item.text)
   print(f'Tokens used: {tokens_used}')
-
   try:
     response_dict = json.loads(response)
     redacted_message = item.text
@@ -87,5 +86,5 @@ def get_redact(item: ItemText):
 
   except Exception as e:
     print(f'Error: {e}')
-    return {'redacted': '', 'original': item.text, 'tokens_used': tokens_used, 'reasoning': ''}
+    return {'redacted': '', 'original': item.text, 'tokens_used': tokens_used, 'reasoning': 'Error in redact function'}
     
