@@ -15,6 +15,8 @@ from fastapi import HTTPException
 import datetime
 from sensitive_filter import check_is_sensitive
 from typing import Optional
+from pii_mask import redact
+import json
 
 app = FastAPI()
 
@@ -77,6 +79,23 @@ def get_ocr(item: ItemUrl):
     results["prediction"] = "unsure"
   return results
 
+@app.post("/redact")
+def get_redact(item: ItemText):
+  response, tokens_used = redact(item.text)
+  print(f'Tokens used: {tokens_used}')
+  try:
+    response_dict = json.loads(response)
+    redacted_message = item.text
+    for redaction in response_dict["redacted"]:
+        redacted_text = redaction["text"]
+        replacement = redaction["replaceWith"]
+        redacted_message = redacted_message.replace(redacted_text, replacement)
+    return {'redacted': redacted_message, 'original': item.text, 'tokens_used': tokens_used, 'reasoning': response_dict['reasoning']}
+
+  except Exception as e:
+    print(f'Error: {e}')
+    return {'redacted': '', 'original': item.text, 'tokens_used': tokens_used, 'reasoning': 'Error in redact function'}
+    
 @app.post("/getCommunityNote")
 async def generate_community_note_endpoint(request: CommunityNoteRequest):
     try:
