@@ -18,9 +18,9 @@ if os.environ.get("GOOGLE_APPLICATION_CREDENTIALS") is None:
     PROJECT_ID = get_project_id()
     vertexai.init(project=PROJECT_ID, location=REGION)
 else:
-    vertexai.init()
+    vertexai.init(location=REGION)
 
-multimodal_model = generative_models.GenerativeModel("gemini-1.0-pro-vision")
+multimodal_model = generative_models.GenerativeModel("gemini-1.5-pro")
 
 # Model config
 model_config = {"temperature": 0}

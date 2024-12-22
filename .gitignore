@@ -9,3 +9,4 @@ files/
 .env
 .dockerignore
 credentials/
+.venv/
