@@ -10,3 +10,4 @@ files/
 .dockerignore
 credentials/
 .venv/
+.python-version
