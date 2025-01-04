@@ -11,3 +11,4 @@ files/
 credentials/
 .venv/
 .python-version
+.pytest_cache/
