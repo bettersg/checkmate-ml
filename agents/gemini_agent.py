@@ -3,10 +3,10 @@
 from .abstract import FactCheckingAgentBaseClass
 from typing import Union, List
 from google.genai import types
-from utils.cloud_storage import get_image_part
+from utils.gemini_utils import get_image_part, generate_image_parts, generate_text_parts
 import asyncio
 import time
-from tools import summarise_report
+from tools import summarise_report_factory
 
 
 class GeminiAgent(FactCheckingAgentBaseClass):
@@ -26,11 +26,14 @@ class GeminiAgent(FactCheckingAgentBaseClass):
         The former will hold the function itself, and the latter an openAPI specification dictionary
         """
         self.include_planning_step = include_planning_step
+        if not self.include_planning_step:
+            tool_list = [
+                tool
+                for tool in tool_list
+                if tool["function"].__name__ != "plan_next_step"
+            ]
         super().__init__(client, tool_list, system_prompt, temperature)
         self.function_tool = types.Tool(function_declarations=self.function_definitions)
-        if self.include_planning_step:
-            # remove the planning step if not needed
-            self.function_dict.pop("plan_next_step", None)
 
     @staticmethod
     def flatten_and_organise(
@@ -180,9 +183,9 @@ class GeminiAgent(FactCheckingAgentBaseClass):
                     available_functions = ["plan_next_step"]
                 else:
                     available_functions = [
-                        "search_google",
-                        "get_website_screenshot",
-                        "submit_report_for_review",
+                        definition["name"]
+                        for definition in self.function_definitions
+                        if definition["name"] not in ["plan_next_step", "infer_intent"]
                     ]
                 tool_config = types.ToolConfig(
                     function_calling_config=types.FunctionCallingConfig(
@@ -277,26 +280,19 @@ class GeminiAgent(FactCheckingAgentBaseClass):
             A dictionary representing the community note.
         """
         start_time = time.time()  # Start the timer
+        summarise_report = summarise_report_factory(
+            text, image_url, caption
+        )  # Creates a function that takes in a report and summarises it.
         cost_tracker = {"total_cost": 0, "cost_trace": []}  # To store the cost details
-
+        if "summarise_report" in self.function_dict:
+            if self.function_dict["summarise_report"] is not None:
+                print("Unexpected, summary function already inside function_dict")
+            self.function_dict["summarise_report"] = summarise_report
         if data_type == "text":
-            if text is None:
-                raise ValueError("Text content is required when data_type is 'text'")
-            parts = [types.Part.from_text(f"User sent in: {text}")]
+            parts = generate_text_parts(text)
 
         elif data_type == "image":
-            parts = []
-            if image_url is None:
-                raise ValueError("Image URL is required when data_type is 'image'")
-            parts.append(get_image_part(image_url))
-            if caption:
-                parts.append(
-                    types.Part.from_text(
-                        f"User sent in the above image with this caption: {caption}"
-                    )
-                )
-            else:
-                parts.append(types.Part.from_text("User sent in the above image"))
+            parts = generate_image_parts(image_url, caption)
 
         report_dict = await self.generate_report(parts.copy())
 
@@ -304,7 +300,9 @@ class GeminiAgent(FactCheckingAgentBaseClass):
         report_dict["agent_time_taken"] = duration
         time.sleep(3)
         if report_dict.get("success") and report_dict.get("report"):
-            summary_results = await summarise_report(parts, report_dict["report"])
+            summary_results = await summarise_report(
+                report_dict["report"]
+            )  # Modify this line
             if summary_results.get("success"):
                 report_dict["community_note"] = summary_results["community_note"]
                 print("summary_generated")

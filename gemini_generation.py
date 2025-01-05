@@ -5,6 +5,7 @@ from tools import (
     review_report_tool,
     plan_next_step_tool,
     infer_intent_tool,
+    translate_text,
 )
 
 from agents.gemini_agent import GeminiAgent
@@ -12,6 +13,7 @@ from clients.gemini import gemini_client
 from datetime import datetime
 from typing import Union, List
 from pydantic import BaseModel
+import json
 
 system_prompt = f"""# Context
 
@@ -57,7 +59,7 @@ gemini_agent = GeminiAgent(
     tool_list=[
         search_google_tool,
         get_screenshot_tool,
-        # check_malicious_url_tool,
+        check_malicious_url_tool,
         review_report_tool,
         plan_next_step_tool,
         infer_intent_tool,
@@ -85,12 +87,16 @@ async def get_outputs(
 ):
     outputs = await gemini_agent.generate_note(data_type, text, image_url, caption)
     community_note = outputs["community_note"]
-    ##TODO change to chinese here
+    try:
+        chinese_note = translate_text(community_note, language="cn")
+    except Exception as e:
+        print(f"Error in translation: {e}")
+        chinese_note = community_note
 
     try:
         return CommunityNoteItem(
-            en=outputs["community_note"],
-            cn="TODO",
+            en=community_note,
+            cn=chinese_note,
             links=outputs["sources"],
             isControversial=outputs["isControversial"],
             isVideo=outputs["isVideo"],
@@ -105,7 +111,7 @@ async def get_outputs(
 if __name__ == "__main__":
     import asyncio
 
-    text = "Thanks for the helpful comments"
+    text = "https://shorturl.at/Eijgf?pRO=pyxxtGFduw"
     result = asyncio.run(get_outputs(data_type="text", text=text))
     # prettify the result
     print(result)

@@ -71,7 +71,10 @@ async def check_malicious_url(url):
 
 check_malicious_url_definition = dict(
     name="check_malicious_url",
-    description="Runs a check on the provided URL to determine if it is malicious. Returns either 'MALICIOUS', 'SUSPICIOUS' or 'BENIGN', as well as as maliciousness score from 0-1. Note, benign doesn't mean free of risk.",
+    description="Runs a check on the provided URL to determine if it is malicious.\
+      Returns either 'MALICIOUS', 'SUSPICIOUS' or 'BENIGN', as well as as maliciousness\
+        score from 0-1. Note, while a malicious rating should be trusted, a benign rating \
+            doesn't imply the absence of malicious behaviour, as there might be false negatives.",
     parameters={
         "type": "OBJECT",
         "properties": {

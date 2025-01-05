@@ -1,6 +1,8 @@
 from google.genai import types
 
 from clients.gemini import gemini_client
+from typing import Union, List
+from utils.gemini_utils import generate_image_parts, generate_text_parts
 import json
 
 
@@ -37,55 +39,75 @@ summary_response_schema = {
 }
 
 
-async def summarise_report(initial_submission_parts, report):
-    """Summarise the report"""
-    parts = initial_submission_parts.copy()
-    parts.append(types.Part.from_text(f"***Report***: {report}\n****End Report***"))
-    messages = [types.Content(parts=parts, role="user")]
-    try:
-        response = gemini_client.models.generate_content(
-            model="gemini-2.0-flash-exp",
-            contents=messages,
-            config=types.GenerateContentConfig(
-                systemInstruction=summary_prompt,
-                response_mime_type="application/json",
-                response_schema=summary_response_schema,
-                temperature=0.5,
-            ),
-        )
-    except Exception as e:
-        print(f"Error in generation: {e}")
-        return {"error": str(e), "success": False}
-    try:
-        response_json = json.loads(response.candidates[0].content.parts[0].text)
-    except Exception as e:
-        print(f"Error: {e}")
-        return {"success": False, "error": str(e)}
-    if not isinstance(response_json, dict):
-        print(f"response_json: {response_json}")
-        return {"success": False, "error": "No community note generated"}
-    if response_json.get("community_note"):
-        return {"community_note": response_json["community_note"], "success": True}
-    else:
-        return {"success": False, "error": "No community note generated"}
+def summarise_report_factory(
+    input_text: Union[str, None] = None,
+    input_image_url: Union[str, None] = None,
+    input_caption: Union[str, None] = None,
+):
+    """
+    Factory function that returns a summarise_report function with input_text, input_image_url, input_caption pre-set.
+    """
+
+    async def summarise_report(report: str):
+        """
+        Summarise the report (with pre-set inputs for text, image URL, or caption).
+        """
+        if input_text is not None and input_image_url is not None:
+            raise ValueError(
+                "Only one of input_text or input_image_url should be provided"
+            )
+        if input_text:
+            parts = generate_text_parts(input_text)
+        elif input_image_url:
+            parts = generate_image_parts(input_image_url, input_caption)
+        parts.append(types.Part.from_text(f"***Report***: {report}\n****End Report***"))
+        messages = [types.Content(parts=parts, role="user")]
+        try:
+            response = gemini_client.models.generate_content(
+                model="gemini-2.0-flash-exp",
+                contents=messages,
+                config=types.GenerateContentConfig(
+                    systemInstruction=summary_prompt,
+                    response_mime_type="application/json",
+                    response_schema=summary_response_schema,
+                    temperature=0.5,
+                ),
+            )
+        except Exception as e:
+            print(f"Error in generation: {e}")
+            return {"error": str(e), "success": False}
+        try:
+            response_json = json.loads(response.candidates[0].content.parts[0].text)
+        except Exception as e:
+            print(f"Error: {e}")
+            return {"success": False, "error": str(e)}
+        if not isinstance(response_json, dict):
+            print(f"response_json: {response_json}")
+            return {"success": False, "error": "No community note generated"}
+        if response_json.get("community_note"):
+            return {"community_note": response_json["community_note"], "success": True}
+        else:
+            return {"success": False, "error": "No community note generated"}
+
+    return summarise_report
 
 
-intent_function = dict(
+summarise_report_definition = dict(
     name="summarise_report",
-    description="Infer the user's intent.",
+    description="Given a long-form report, and the text or image message the user originally sent in, summarises the report into an X-style community note of around 50-100 words.",
     parameters={
         "type": "OBJECT",
         "properties": {
-            "reasoning": {
+            "report": {
                 "type": "STRING",
-                "description": "The reasoning behind your choice",
-            },
-            "intent": {
-                "type": "STRING",
-                "description": "What the user's intent is, e.g. to check whether this is a scam, to check if this is really from the government, to check the facts in this article, etc.",
-                "example": "The user intends to check whether this is a legitimate message sent from the government.",
+                "description": "The long-form report to summarise.",
             },
         },
         "required": ["reasoning", "intent"],
     },
 )
+
+summarise_report_tool = {
+    "function": None,
+    "definition": summarise_report_definition,
+}
