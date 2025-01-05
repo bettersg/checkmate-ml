@@ -14,6 +14,8 @@ from datetime import datetime
 from typing import Union, List
 from pydantic import BaseModel
 import json
+from fastapi import Request
+from context import request_id_var  # Import the context variable
 
 system_prompt = f"""# Context
 
@@ -85,6 +87,7 @@ async def get_outputs(
     image_url: Union[str, None] = None,
     caption: Union[str, None] = None,
 ):
+    request_id = request_id_var.get()  # Access the request_id from context variable
     outputs = await gemini_agent.generate_note(data_type, text, image_url, caption)
     community_note = outputs["community_note"]
     try:
