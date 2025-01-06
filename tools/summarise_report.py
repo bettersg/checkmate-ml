@@ -17,13 +17,14 @@ Given the following inputs:
 Your job is to summarise the report into an X-style community note of around 50-100 words. This should be clear.
 
 The note should also be written with the assumption that users have short attention spans. Thus, it should start with a clear statement that gives the user clarity on the message. For example (but not limited to):
-[For messages that are clearly scams] - 🚨 This is a scam
-[For messages that are clearly falsehoods] - ❌ This is likely to be untrue
+[For messages that are clearly scams, i.e. attempts to obtain money/personal information via deception] - 🚨 This is a scam
+[For messages indicative of illegality, e.g. unlicensed moneylending, gambling] - 🚨 This is suspicious
+[For messages that are clearly falsehoods] - ❌ This is largely untrue
 [For messages that are otherwise harmful] - 🛑 This is likely harmful
 [For messages that are from legitimate sources] - ✅ This a legitimate <something>
 [For information/commentary that is broadly accurate] - ✅ This is largely true
-[For content that warrants caution] - ⚠️ Be cautious
 [For information/commentary that is misleading or unbalanced] - ⚠️ Take this with a pinch of salt
+[For content that otherwise warrants caution] - ⚠️ Be cautious
 
 A good note would start with a clear statement like the above, and then justify it while summarising the key points of the report. There's no need to describe/summary what's in the message itself.
 """
@@ -70,7 +71,7 @@ def summarise_report_factory(
                     systemInstruction=summary_prompt,
                     response_mime_type="application/json",
                     response_schema=summary_response_schema,
-                    temperature=0.5,
+                    temperature=0.1,
                 ),
             )
         except Exception as e:
@@ -83,7 +84,10 @@ def summarise_report_factory(
             return {"success": False, "error": str(e)}
         if not isinstance(response_json, dict):
             print(f"response_json: {response_json}")
-            return {"success": False, "error": "No community note generated"}
+            return {
+                "success": False,
+                "error": "Response from summariser is not a dictionary",
+            }
         if response_json.get("community_note"):
             return {"community_note": response_json["community_note"], "success": True}
         else:

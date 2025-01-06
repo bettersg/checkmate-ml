@@ -12,34 +12,53 @@ from agents.gemini_agent import GeminiAgent
 from clients.gemini import gemini_client
 from datetime import datetime
 from typing import Union, List
-from pydantic import BaseModel
+from models import AgentResponse
 from context import request_id_var  # Import the context variable
+import json
 
 system_prompt = f"""# Context
 
 You are an agent behind CheckMate, a product that allows users based in Singapore to send in dubious content they aren't sure whether to trust, and checks such content on their behalf.
 
-Such content is sent via WhatsApp, and can be a text message or an image message.
+Such content can be a text message or an image message. Image messages could, among others, be screenshots of their phone, pictures from their camera, or downloaded images. They could also be accompanied by captions.
 
 # Task
 Your task is to:
 1. Infer the intent of whoever sent the message in - what exactly about the message they want checked, and how to go about it. Note the distinction between the sender and the author. For example, if the message contains claims but no source, they are probably interested in the factuality of the claims. If the message doesn't contain verifiable claims, they are probably asking whether it's from a legitimate, trustworthy source. If it's about an offer, they are probably enquiring about the legitimacy of the offer. If it's a message claiming it's from the government, they want to know if it is really from the government.
-2. Use the supplied tools to help you check the information. Focus primarily on credibility/legitimacy of the source/author and factuality of information/claims, if relevant. If not, rely on contextual clues. When searching, give more weight to reliable, well-known sources. Avoid doing more than 5 searches per message.
-3. Submit a clear, concise report to conclude your task. Start with your findings and end with a thoughtful conclusion. Focus on the message and avoid specific third-person references to 'the user' who sent it in. Be helpful and address the intent identified in the first step.
+2. Use the supplied tools to help you check the information. Focus primarily on credibility/legitimacy of the source/author and factuality of information/claims, if relevant. If not, rely on contextual clues. When searching, give more weight to reliable, well-known sources. Perform only a maximum of 5 searches and 5 website visits per report, so use them judiciously, and only use what you need.
+3. Submit a report to conclude your task. Start with your findings and end with a thoughtful conclusion. Be helpful and address the intent identified in the first step.
+
+# Guidelines for Report:
+- Avoid references to the user, like "the user wants to know..." or the "the user sent in...", as these are obvious.
+- Avoid self-references like "I found that..." or "I was unable to..."
+- Use impersonal phrasing such as "The message contains..." or "The content suggests..."
+- Start with a summary of the content, analyse it, then end with a thoughtful conclusion.
 
 # Other useful information
 
 Date: {datetime.now().strftime("%d %b %Y")}
 Popular types of messages:
     - scams
-    - illegal moneylending
-    - marketing content
+    - illegal moneylending/gambling
+    - marketing content from companies, especially Singapore companies. Note, not all marketing content is necessarily bad, but should be checked for validity.
     - links to news articles
     - links to social media
     - viral messages designed to be forwarded
-    - legitimate government communications
-Characteristics of legitimate government communications are:
-    - Come via SMS (not Telegram or WhatsApp) from a gov.sg alphanumeric sender ID
+    - legitimate government communications from agencies or schools
+    - OTP messages. Note, while requests by others to share OTPs are likely scams, the OTP messages themselves are not.
+
+Signs that hint at legitimacy:
+    - The message is clearly from a well-known, official company, or the government
+    - The message asks the user to access a link elsewhere, rather than providing a direct hyperlink
+    - Any links hyperlinks come from legitimate domains
+
+Signs that hint at illegitimacy:
+    - Messages that use Cialdini's principles (reciprocity, commitment, social proof, authority, liking, scarcity) to manipulate the user
+    - Domains are purposesly made to look like legitimate domains
+    - Too good to be true
+
+Characteristics of legitimate government communications:
+    - Come via SMS from a gov.sg alphanumeric sender ID
     - Contain go.gov.sg links, which is from the official Singapore government link shortener. Do note that in emails or Telegram this could be a fake hyperlink
     - Are in the following format
 
@@ -51,8 +70,7 @@ Characteristics of legitimate government communications are:
 ---
 
 This is an automated message sent by the Singapore Government.
-```End Govt SMS Format```
-"""
+```End Govt SMS Format```"""
 
 gemini_agent = GeminiAgent(
     gemini_client,
@@ -70,15 +88,6 @@ gemini_agent = GeminiAgent(
 )
 
 
-class CommunityNoteItem(BaseModel):
-    en: str
-    cn: str
-    links: List[str]
-    isControversial: bool = False
-    isVideo: bool = False
-    isAccessBlocked: bool = False
-
-
 async def get_outputs(
     data_type: str = "text",
     text: Union[str, None] = None,
@@ -86,27 +95,39 @@ async def get_outputs(
     caption: Union[str, None] = None,
 ):
     request_id = request_id_var.get()  # Access the request_id from context variable
-    outputs = await gemini_agent.generate_note(data_type, text, image_url, caption)
-    community_note = outputs["community_note"]
     try:
-        chinese_note = await translate_text(community_note, language="cn")
-    except Exception as e:
-        print(f"Error in translation: {e}")
+        outputs = await gemini_agent.generate_note(data_type, text, image_url, caption)
+        community_note = outputs.get("community_note", None)
         chinese_note = community_note
+        if community_note is not None:
+            try:
+                chinese_note = await translate_text(community_note, language="cn")
+            except Exception as e:
+                print(f"Error in translation: {e}")
 
-    try:
-        return CommunityNoteItem(
+        return AgentResponse(
+            requestId=request_id,
+            success=outputs.get("success", False),
             en=community_note,
             cn=chinese_note,
-            links=outputs["sources"],
-            isControversial=outputs["isControversial"],
-            isVideo=outputs["isVideo"],
-            isAccessBlocked=outputs["isAccessBlocked"],
+            links=outputs.get("sources", None),
+            isControversial=outputs.get("isControversial", False),
+            isVideo=outputs.get("isVideo", False),
+            isAccessBlocked=outputs.get("isAccessBlocked", False),
+            report=outputs.get("report", None),
+            total_time_taken=outputs.get("total_time_taken", None),
+            agent_trace=outputs.get("agent_trace", None),
         )
-    except KeyError:
-        print("Error in generating community note")
     except Exception as e:
-        print(f"Error: {e}")
+        print(f"Error in generating community note: {e}")
+        return AgentResponse(
+            requestId=request_id,
+            success=False,
+            error_message=str(e),
+            agent_trace=(
+                outputs.get("agent_trace", None) if "outputs" in locals() else None
+            ),
+        )
 
 
 if __name__ == "__main__":
@@ -115,4 +136,5 @@ if __name__ == "__main__":
     text = "https://www.msn.com/en-sg/health/other/china-struggles-with-new-virus-outbreak-five-years-after-covid-pandemic/ss-BB1hj9oL?ocid=nl_article_link"
     result = asyncio.run(get_outputs(data_type="text", text=text))
     # prettify the result
-    print(result)
+    print(result.report)
+    print(result.en)

@@ -7,6 +7,7 @@ from utils.gemini_utils import get_image_part, generate_image_parts, generate_te
 import asyncio
 import time
 from tools import summarise_report_factory
+import json
 
 
 class GeminiAgent(FactCheckingAgentBaseClass):
@@ -90,7 +91,7 @@ class GeminiAgent(FactCheckingAgentBaseClass):
                 response = {"role": "user", "text": "<IMAGE_DATA>"}
             elif part.inline_data is not None:
                 response = {"role": "user", "text": "<INLINE_DATA>"}
-            responses.append(response)
+            responses.append(json.dumps(response, indent=2))
         return responses
 
     @staticmethod
@@ -104,7 +105,7 @@ class GeminiAgent(FactCheckingAgentBaseClass):
                     "name": part.function_call.name,
                     "response": part.function_call.args,
                 }
-                responses.append(response)
+                responses.append(json.dumps(response, indent=2))
             except Exception as e:
                 print(f"An error occurred {e}")
                 print(part)
@@ -300,13 +301,14 @@ class GeminiAgent(FactCheckingAgentBaseClass):
         report_dict["agent_time_taken"] = duration
         time.sleep(3)
         if report_dict.get("success") and report_dict.get("report"):
-            summary_results = await summarise_report(
-                report_dict["report"]
-            )  # Modify this line
+            summary_results = await summarise_report(report_dict["report"])
             if summary_results.get("success"):
                 report_dict["community_note"] = summary_results["community_note"]
             else:
                 report_dict["community_note"] = None
+                report_dict["error"] = summary_results.get(
+                    "error", "No community note generated"
+                )
             report_dict["total_time_taken"] = time.time() - start_time
             return report_dict
         else:

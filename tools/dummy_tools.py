@@ -18,7 +18,7 @@ plan_next_step_definition = dict(
             },
             "next_step": {
                 "type": "STRING",
-                "description": "What the next step should be. You can either search_google to investigate claims, get_website_screenshot to see the contents of a link, or submit_community_note once you have enough information to complete your task. Avoid performing more than 5 searches.",
+                "description": "What the next step should be. You can either search_google to investigate claims, get_website_screenshot to see the contents of a link, or submit_community_note once you have enough information to complete your task. Avoid performing more than 5 searches or visiting more than 5 sites.",
                 "enum": [
                     "search_google",
                     "get_website_screenshot",

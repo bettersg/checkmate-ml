@@ -19,6 +19,7 @@ from typing import Optional
 from pii_mask import redact
 import json
 from gemini_generation import get_outputs
+from models import CommunityNoteRequest, AgentResponse
 from middleware import RequestIDMiddleware  # Import the middleware
 from context import request_id_var  # Import the context variable
 
@@ -45,18 +46,6 @@ class ItemUrl(BaseModel):
 # class NoteImage(BaseModel):
 #     image_url: str
 #     caption: str = None
-
-
-class CommunityNoteRequest(BaseModel):
-    text: Optional[str] = Field(
-        default=None, description="Text content for generating a community note"
-    )
-    image_url: Optional[str] = Field(
-        default=None, description="Image URL for generating a community note"
-    )
-    caption: Optional[str] = Field(
-        default=None, description="Caption for the image (optional)"
-    )
 
 
 @app.post("/embed")
@@ -156,14 +145,12 @@ async def generate_community_note_endpoint(request: CommunityNoteRequest):
 
 
 @app.post("/v2/getCommunityNote")
-async def get_gemini_note(request: CommunityNoteRequest):
+async def get_gemini_note(request: CommunityNoteRequest) -> AgentResponse:
     try:
-        request_id = request_id_var.get()  # Access the request_id from context variable
-        session_id = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
         if request.text:
-            result = await get_outputs(data_type="text", text=request.text)
+            return await get_outputs(data_type="text", text=request.text)
         elif request.image_url:
-            result = await get_outputs(
+            return await get_outputs(
                 data_type="image",
                 image_url=request.image_url,
                 caption=request.caption,
@@ -172,11 +159,8 @@ async def get_gemini_note(request: CommunityNoteRequest):
             raise HTTPException(
                 status_code=400, detail="Either 'text' or 'image_url' must be provided."
             )
-
-        return {
-            "request_id": request_id,
-            **result,
-        }  # Include request_id in the response
+    except HTTPException as e:
+        raise e
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
@@ -184,4 +168,4 @@ async def get_gemini_note(request: CommunityNoteRequest):
 if __name__ == "__main__":
     import uvicorn
 
-    uvicorn.run("app:app", host="127.0.0.1", port=8000, reload=True)
+    uvicorn.run("app:app", host="127.0.0.1", port=8080, reload=True)

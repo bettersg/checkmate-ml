@@ -69,7 +69,6 @@ get_website_screenshot_tool = json.loads(get_website_screenshot_tool_str)
 submit_community_note_tool = json.loads(submit_community_note_tool_str)
 
 tools = [search_google_tool, get_website_screenshot_tool, submit_community_note_tool]
-print(tools)
 
 
 async def summary_note(session_id, messages, cost_tracker):

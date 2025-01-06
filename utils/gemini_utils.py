@@ -1,5 +1,7 @@
 from google.cloud import storage
 from google.genai import types
+import httpx
+import base64
 
 
 def get_image_part(gcs_path):
@@ -38,9 +40,12 @@ def generate_image_parts(image_url: str, caption: str = None):
     if image_url is None:
         raise ValueError("Image URL is required when data_type is 'image'")
     if image_url.startswith("gs://"):
-        parts.append(types.Part.from_uri(image_url, mime_type="image/jpeg"))
-    else:
+        # parts.append(types.Part.from_uri(image_url, mime_type="image/jpeg")) #TODO: Change in future
         parts.append(get_image_part(image_url))
+    else:
+        image = httpx.get(image_url)
+        file_content = image.content
+        parts.append(types.Part.from_bytes(data=file_content, mime_type="image/jpeg"))
     if caption:
         parts.append(
             types.Part.from_text(
