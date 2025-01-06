@@ -12,10 +12,10 @@ class AgentResponse(BaseModel):
     isControversial: bool = False
     isVideo: bool = False
     isAccessBlocked: bool = False
-    total_time_taken: float | None = None
+    totalTimeTaken: float | None = None
     report: str | None = None
-    error_message: str | None = None
-    agent_trace: List[str] | None = None
+    errorMessage: str | None = None
+    agentTrace: List[str] | None = None
 
 
 class CommunityNoteRequest(BaseModel):

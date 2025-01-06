@@ -46,12 +46,13 @@ Popular types of messages:
     - links to news articles
     - links to social media
     - viral messages designed to be forwarded
-    - legitimate government communications from agencies or schools
+    - legitimate government communications from agencies or educational institutions
     - OTP messages. Note, while requests by others to share OTPs are likely scams, the OTP messages themselves are not.
 
 Signs that hint at legitimacy:
     - The message is clearly from a well-known, official company, or the government
     - The message asks the user to access a link elsewhere, rather than providing a direct hyperlink
+    - The screenshot shows an SMS with an alphanumeric sender ID (as opposed to a phone number). In Singapore, if the alphanumeric sender ID is not <Likely Scam>, it means it has been whitelisted by the authorities
     - Any links hyperlinks come from legitimate domains
 
 Signs that hint at illegitimacy:
@@ -61,7 +62,8 @@ Signs that hint at illegitimacy:
 
 Characteristics of legitimate government communications:
     - Come via SMS from a gov.sg alphanumeric sender ID
-    - Contain go.gov.sg links, which is from the official Singapore government link shortener. Do note that in emails or Telegram this could be a fake hyperlink
+    - Contain .gov.sg or .edu.sg links
+    - Sometimes may contain go.gov.sg links which is from the official Singapore government link shortener. Do note that in emails or Telegram this could be a fake hyperlink
     - Are in the following format
 
 ```Govt SMS Format```
@@ -119,16 +121,16 @@ async def get_outputs(
             isVideo=outputs.get("isVideo", False),
             isAccessBlocked=outputs.get("isAccessBlocked", False),
             report=outputs.get("report", None),
-            total_time_taken=outputs.get("total_time_taken", None),
-            agent_trace=outputs.get("agent_trace", None),
+            totalTimeTaken=outputs.get("total_time_taken", None),
+            agentTrace=outputs.get("agent_trace", None),
         )
     except Exception as e:
         print(f"Error in generating community note: {e}")
         return AgentResponse(
             requestId=request_id,
             success=False,
-            error_message=str(e),
-            agent_trace=(
+            errorMessage=str(e),
+            agentTrace=(
                 outputs.get("agent_trace", None) if "outputs" in locals() else None
             ),
         )
