@@ -158,6 +158,7 @@ class GeminiAgent(FactCheckingAgentBaseClass):
         try:
             result = await self.function_dict[function_name](**function_args)
             if function_call.name == "get_website_screenshot":
+                self.screenshot_count += 1
                 if not result["success"] or result.get("result") is None:
                     child_logger.warn("Screenshot API failed")
                     types.Part().from_function_response(
@@ -178,6 +179,8 @@ class GeminiAgent(FactCheckingAgentBaseClass):
                         ),
                     ]
             else:
+                if function_call.name == "search_google":
+                    self.search_count += 1
                 if result.get("result") is None or result.get("success") is False:
                     child_logger.warn(f"Issue with tool call {function_call.name}")
                 else:
