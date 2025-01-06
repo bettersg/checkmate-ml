@@ -256,7 +256,7 @@ class GeminiAgent(FactCheckingAgentBaseClass):
                         tools=[self.function_tool],
                         systemInstruction=system_prompt,
                         tool_config=tool_config,
-                        temperature=0.1,
+                        temperature=0.2,
                     ),
                 )
                 function_call_promises = []

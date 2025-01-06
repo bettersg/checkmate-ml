@@ -24,7 +24,8 @@ The note should also be written with the assumption that users have short attent
 [For messages that are from legitimate sources] - ✅ This a legitimate <something>
 [For information/commentary that is broadly accurate] - ✅ This is largely true
 [For information/commentary that is misleading or unbalanced] - ⚠️ Take this with a pinch of salt
-[For content that otherwise warrants caution] - ⚠️ Be cautious
+[For information/commentary that is lacks context] - ⚠️ This doesn't paint the full picture
+[For content that the user may want to be cautious about proceeding] - ⚠️ Proceed with caution
 
 A good note would start with a clear statement like the above, and then justify it while summarising the key points of the report. There's no need to describe/summary what's in the message itself.
 """
@@ -71,7 +72,7 @@ def summarise_report_factory(
                     systemInstruction=summary_prompt,
                     response_mime_type="application/json",
                     response_schema=summary_response_schema,
-                    temperature=0.1,
+                    temperature=0.2,
                 ),
             )
         except Exception as e:

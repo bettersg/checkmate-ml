@@ -32,7 +32,7 @@ async def translate_text(text: str, language: str = SupportedLanguage.CN.value):
             contents=[types.Part(text=text)],
             config=types.GenerateContentConfig(
                 systemInstruction=prompt,
-                temperature=0.1,
+                temperature=0.2,
             ),
         )
         translated_text = response.candidates[0].content.parts[0].text
