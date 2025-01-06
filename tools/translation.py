@@ -18,23 +18,25 @@ class SupportedLanguage(Enum):
 supported_languages = {SupportedLanguage.CN.value: "Simplified Chinese"}
 
 
-async def translate_text(text: str, language: SupportedLanguage = SupportedLanguage.CN):
+async def translate_text(text: str, language: str = SupportedLanguage.CN.value):
     """Translates the given text to the specified language."""
+    if language not in SupportedLanguage._value2member_map_:
+        raise ValueError(f"Unsupported language: {language}")
     try:
+        language_enum = SupportedLanguage(language)
         prompt = translation_system_prompt.format(
-            language=supported_languages.get(language.value, "Simplified Chinese")
+            language=supported_languages.get(language_enum.value, "Simplified Chinese")
         )
         response = gemini_client.models.generate_content(
             model="gemini-2.0-flash-exp",
-            contents=[types.Part(text=text, role="user", language=language.value)],
+            contents=[types.Part(text=text)],
             config=types.GenerateContentConfig(
                 systemInstruction=prompt,
-                response_mime_type="application/json",
                 temperature=0.1,
             ),
         )
-        response_json = json.loads(response.candidates[0].content.parts[0].text)
-        return response_json["translated_text"]
+        translated_text = response.candidates[0].content.parts[0].text
+        return translated_text
     except Exception as e:
         print(f"Error in translation: {e}")
         return None

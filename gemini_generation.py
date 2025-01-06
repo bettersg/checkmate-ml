@@ -13,8 +13,6 @@ from clients.gemini import gemini_client
 from datetime import datetime
 from typing import Union, List
 from pydantic import BaseModel
-import json
-from fastapi import Request
 from context import request_id_var  # Import the context variable
 
 system_prompt = f"""# Context
@@ -91,7 +89,7 @@ async def get_outputs(
     outputs = await gemini_agent.generate_note(data_type, text, image_url, caption)
     community_note = outputs["community_note"]
     try:
-        chinese_note = translate_text(community_note, language="cn")
+        chinese_note = await translate_text(community_note, language="cn")
     except Exception as e:
         print(f"Error in translation: {e}")
         chinese_note = community_note
@@ -114,7 +112,7 @@ async def get_outputs(
 if __name__ == "__main__":
     import asyncio
 
-    text = "https://shorturl.at/Eijgf?pRO=pyxxtGFduw"
+    text = "https://www.msn.com/en-sg/health/other/china-struggles-with-new-virus-outbreak-five-years-after-covid-pandemic/ss-BB1hj9oL?ocid=nl_article_link"
     result = asyncio.run(get_outputs(data_type="text", text=text))
     # prettify the result
     print(result)

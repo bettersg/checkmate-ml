@@ -14,7 +14,6 @@ def get_identity_token(audience: str) -> str:
 
 
 async def get_website_screenshot(url):
-    print(f"hostname: {os.environ.get('SCREENSHOT_HOSTNAME')}")
     hostname = os.environ.get("SCREENSHOT_HOSTNAME")
 
     identity_token = get_identity_token(hostname)

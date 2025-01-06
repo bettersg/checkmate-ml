@@ -4,7 +4,7 @@ load_dotenv()
 
 import joblib
 import numpy as np
-from fastapi import FastAPI, Request
+from fastapi import FastAPI
 from pydantic import BaseModel, Field
 from sentence_transformers import SentenceTransformer
 

@@ -305,7 +305,6 @@ class GeminiAgent(FactCheckingAgentBaseClass):
             )  # Modify this line
             if summary_results.get("success"):
                 report_dict["community_note"] = summary_results["community_note"]
-                print("summary_generated")
             else:
                 report_dict["community_note"] = None
             report_dict["total_time_taken"] = time.time() - start_time
