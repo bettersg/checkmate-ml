@@ -161,10 +161,10 @@ class GeminiAgent(FactCheckingAgentBaseClass):
                 self.screenshot_count += 1
                 if not result["success"] or result.get("result") is None:
                     child_logger.warn("Screenshot API failed")
-                    types.Part().from_function_response(
+                    return types.Part().from_function_response(
                         name=function_call.name,
                         response={"result": "An error occurred taking the screenshot"},
-                    ),
+                    )
                 else:
                     child_logger.info("Screenshot Successfully taken")
                     return [
