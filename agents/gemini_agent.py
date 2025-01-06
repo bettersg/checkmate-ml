@@ -8,6 +8,9 @@ import asyncio
 import time
 from tools import summarise_report_factory
 import json
+from logger import StructuredLogger
+
+logger = StructuredLogger("gemini_agent")
 
 
 class GeminiAgent(FactCheckingAgentBaseClass):
@@ -107,8 +110,9 @@ class GeminiAgent(FactCheckingAgentBaseClass):
                 }
                 responses.append(json.dumps(response, indent=2))
             except Exception as e:
-                print(f"An error occurred {e}")
-                print(part)
+                logger.error(
+                    "Error processing model trace", error=str(e), part=str(part)
+                )
         return responses
 
     async def call_function(
@@ -127,17 +131,25 @@ class GeminiAgent(FactCheckingAgentBaseClass):
         Raises:
             Exception: If the function call results in an exception, it returns a Part with the exception details.
         """
+        child_logger = logger.child(
+            function_name=function_call.name, function_args=function_call.args
+        )
+        child_logger.info(
+            f"Calling function {function_call.name}",
+        )
         function_name = function_call.name
         function_args = function_call.args
         try:
             result = await self.function_dict[function_name](**function_args)
             if function_call.name == "get_website_screenshot":
-                if not result["success"]:
+                if not result["success"] or result.get("result") is None:
+                    child_logger.warn("Screenshot API failed")
                     types.Part().from_function_response(
                         name=function_call.name,
                         response={"result": "An error occurred taking the screenshot"},
                     ),
                 else:
+                    child_logger.info("Screenshot Successfully taken")
                     return [
                         types.Part().from_function_response(
                             name=function_call.name,
@@ -146,13 +158,16 @@ class GeminiAgent(FactCheckingAgentBaseClass):
                             },
                         ),
                         get_image_part(
-                            result.get(
-                                "result",
-                                f"function {function_call.name} encountered an error",
-                            )
+                            result["result"],
                         ),
                     ]
             else:
+                if result.get("result") is None or result.get("success") is False:
+                    child_logger.warn(f"Issue with tool call {function_call.name}")
+                else:
+                    child_logger.info(
+                        f"Function {function_call.name} executed successfully"
+                    )
                 return types.Part().from_function_response(
                     name=function_call.name,
                     response={
@@ -163,6 +178,10 @@ class GeminiAgent(FactCheckingAgentBaseClass):
                     },
                 )
         except Exception as exc:
+            child_logger.error(
+                f"Error in call_function {function_call.name}",
+                error=str(exc),
+            )
             return types.Part().from_function_response(
                 name=function_call.name,
                 response={
@@ -171,6 +190,13 @@ class GeminiAgent(FactCheckingAgentBaseClass):
             )
 
     async def generate_report(self, starting_parts):
+        """Generates a report based on the provided starting parts.
+        args:
+            starting_parts: The starting parts of the report.
+        returns:
+            A dictionary representing the report.
+        """
+        logger.info("Generating report")
         messages = [types.Content(parts=starting_parts, role="user")]
         completed = False
         think = True
@@ -246,16 +272,23 @@ class GeminiAgent(FactCheckingAgentBaseClass):
                                 messages
                             )
                             return_dict["success"] = True
+                            logger.info("Report generated successfully")
                             return return_dict
                 messages.append(types.Content(parts=response_parts, role="user"))
                 think = not think
                 first_step = False
         except Exception as e:
+            logger.error(
+                "Error during report generation",
+                error=str(e),
+                messages_count=len(messages),
+            )
             return {
                 "error": str(e),
                 "agent_trace": GeminiAgent.process_trace(messages),
                 "success": False,
             }
+        logger.error("Report generated successfully")
         return {
             "success": False,
             "error": "Couldn't generate after 50 turns",
@@ -280,6 +313,10 @@ class GeminiAgent(FactCheckingAgentBaseClass):
         Returns:
             A dictionary representing the community note.
         """
+        child_logger = logger.child(
+            data_type=data_type, text=text, image_url=image_url, caption=caption
+        )
+        child_logger.info("Generating community note")
         start_time = time.time()  # Start the timer
         summarise_report = summarise_report_factory(
             text, image_url, caption
@@ -287,7 +324,9 @@ class GeminiAgent(FactCheckingAgentBaseClass):
         cost_tracker = {"total_cost": 0, "cost_trace": []}  # To store the cost details
         if "summarise_report" in self.function_dict:
             if self.function_dict["summarise_report"] is not None:
-                print("Unexpected, summary function already inside function_dict")
+                logger.warning(
+                    "Unexpected: summary function already inside function_dict"
+                )
             self.function_dict["summarise_report"] = summarise_report
         if data_type == "text":
             parts = generate_text_parts(text)
@@ -310,6 +349,8 @@ class GeminiAgent(FactCheckingAgentBaseClass):
                     "error", "No community note generated"
                 )
             report_dict["total_time_taken"] = time.time() - start_time
+            child_logger.info("Community note generated successfully")
             return report_dict
         else:
+            child_logger.warn("Community report not generatd")
             return report_dict

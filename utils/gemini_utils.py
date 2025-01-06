@@ -1,13 +1,17 @@
 from google.cloud import storage
 from google.genai import types
 import httpx
-import base64
 
 
-def get_image_part(gcs_path):
+def get_image_part(image_url: str):
     # Step 3: Define the bucket and file path
+    if image_url.startswith("gs://"):
+        gcs_path = image_url
+    else:
+        gcs_path = image_url.replace("https://storage.googleapis.com/", "gs://")
+
     bucket_name, blob_name = gcs_path.replace("gs://", "").split("/", 1)
-    #
+
     # Initialize the client#
     client = storage.Client()  #
     #
