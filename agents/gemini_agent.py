@@ -22,6 +22,8 @@ class GeminiAgent(FactCheckingAgentBaseClass):
         system_prompt: str,
         include_planning_step: bool = True,
         temperature: float = 0.2,
+        max_searches: int = 5,
+        max_screenshots: int = 5,
     ):
         """Initializes the FactCheckingAgentBaseClass with a list of tools.
 
@@ -38,6 +40,20 @@ class GeminiAgent(FactCheckingAgentBaseClass):
             ]
         super().__init__(client, tool_list, system_prompt, temperature)
         self.function_tool = types.Tool(function_declarations=self.function_definitions)
+        self.search_count = 0
+        self.screenshot_count = 0
+        self.max_searches = max_searches
+        self.max_screenshots = max_screenshots
+
+    # getter for remaining screnshots
+    @property
+    def remaining_screenshots(self):
+        return self.max_screenshots - self.screenshot_count
+
+    # getter for remaining searches
+    @property
+    def remaining_searches(self):
+        return self.max_searches - self.search_count
 
     @staticmethod
     def flatten_and_organise(
@@ -203,17 +219,28 @@ class GeminiAgent(FactCheckingAgentBaseClass):
         first_step = True
         try:
             while len(messages) < 50 and not completed:
+                system_prompt = self.system_prompt.format(
+                    remaining_searches=self.remaining_searches,
+                    remaining_screenshots=self.remaining_screenshots,
+                )
                 if first_step:
                     available_functions = ["infer_intent"]
-                    think = False
                 elif think and self.include_planning_step:
+
                     available_functions = ["plan_next_step"]
                 else:
+                    banned_functions = ["plan_next_step", "infer_intent"]
+                    if self.remaining_searches == 0:
+                        banned_functions.append("search_google")
+                    if self.remaining_screenshots == 0:
+                        banned_functions.append("get_website_screenshot")
+
                     available_functions = [
                         definition["name"]
                         for definition in self.function_definitions
-                        if definition["name"] not in ["plan_next_step", "infer_intent"]
+                        if definition["name"] not in banned_functions
                     ]
+
                 tool_config = types.ToolConfig(
                     function_calling_config=types.FunctionCallingConfig(
                         mode="ANY", allowed_function_names=available_functions
@@ -224,7 +251,7 @@ class GeminiAgent(FactCheckingAgentBaseClass):
                     contents=messages,
                     config=types.GenerateContentConfig(
                         tools=[self.function_tool],
-                        systemInstruction=self.system_prompt,
+                        systemInstruction=system_prompt,
                         tool_config=tool_config,
                         temperature=0.1,
                     ),
