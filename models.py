@@ -28,3 +28,7 @@ class CommunityNoteRequest(BaseModel):
     caption: Optional[str] = Field(
         default=None, description="Caption for the image (optional)"
     )
+    addPlanning: Optional[bool] = Field(
+        default=False,
+        description="Whether or not to include zero-shot planning step between each agent step",
+    )

@@ -148,12 +148,15 @@ async def generate_community_note_endpoint(request: CommunityNoteRequest):
 async def get_gemini_note(request: CommunityNoteRequest) -> AgentResponse:
     try:
         if request.text:
-            return await get_outputs(data_type="text", text=request.text)
+            return await get_outputs(
+                data_type="text", text=request.text, addPlanning=request.addPlanning
+            )
         elif request.image_url:
             return await get_outputs(
                 data_type="image",
                 image_url=request.image_url,
                 caption=request.caption,
+                addPlanning=request.addPlanning,
             )
         else:
             raise HTTPException(

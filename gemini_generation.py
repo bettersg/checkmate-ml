@@ -74,28 +74,30 @@ Characteristics of legitimate government communications:
 This is an automated message sent by the Singapore Government.
 ```End Govt SMS Format```"""
 
-gemini_agent = GeminiAgent(
-    gemini_client,
-    tool_list=[
-        search_google_tool,
-        get_screenshot_tool,
-        check_malicious_url_tool,
-        review_report_tool,
-        plan_next_step_tool,
-        infer_intent_tool,
-    ],
-    system_prompt=system_prompt.format(datetime=datetime.now().strftime("%d %b %Y")),
-    include_planning_step=False,
-    temperature=0.2,
-)
-
 
 async def get_outputs(
     data_type: str = "text",
     text: Union[str, None] = None,
     image_url: Union[str, None] = None,
     caption: Union[str, None] = None,
+    addPlanning: bool = False,
 ):
+    gemini_agent = GeminiAgent(
+        gemini_client,
+        tool_list=[
+            search_google_tool,
+            get_screenshot_tool,
+            check_malicious_url_tool,
+            review_report_tool,
+            plan_next_step_tool,
+            infer_intent_tool,
+        ],
+        system_prompt=system_prompt.format(
+            datetime=datetime.now().strftime("%d %b %Y")
+        ),
+        include_planning_step=addPlanning,
+        temperature=0.2,
+    )
     request_id = request_id_var.get()  # Access the request_id from context variable
     try:
         outputs = await gemini_agent.generate_note(data_type, text, image_url, caption)

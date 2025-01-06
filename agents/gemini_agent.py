@@ -228,8 +228,8 @@ class GeminiAgent(FactCheckingAgentBaseClass):
                 )
                 if first_step:
                     available_functions = ["infer_intent"]
+                    think = False
                 elif think and self.include_planning_step:
-
                     available_functions = ["plan_next_step"]
                 else:
                     banned_functions = ["plan_next_step", "infer_intent"]
