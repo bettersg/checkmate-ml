@@ -147,13 +147,19 @@ async def generate_community_note_endpoint(request: CommunityNoteRequest):
 @app.post("/v2/getCommunityNote")
 async def get_gemini_note(request: CommunityNoteRequest) -> AgentResponse:
     try:
-        if request.text:
-            return await get_outputs(
-                data_type="text", text=request.text, addPlanning=request.addPlanning
+        if request.text is None and request.image_url is None:
+            raise HTTPException(
+                status_code=400, detail="Either 'text' or 'image_url' must be provided."
             )
+        if request.text is not None and request.image_url is not None:
+            raise HTTPException(
+                status_code=400,
+                detail="Only one of 'text' or 'image_url' should be provided.",
+            )
+        elif request.text:
+            return await get_outputs(text=request.text, addPlanning=request.addPlanning)
         elif request.image_url:
             return await get_outputs(
-                data_type="image",
                 image_url=request.image_url,
                 caption=request.caption,
                 addPlanning=request.addPlanning,

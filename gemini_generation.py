@@ -78,7 +78,6 @@ This is an automated message sent by the Singapore Government.
 
 
 async def get_outputs(
-    data_type: str = "text",
     text: Union[str, None] = None,
     image_url: Union[str, None] = None,
     caption: Union[str, None] = None,
@@ -102,7 +101,7 @@ async def get_outputs(
     )
     request_id = request_id_var.get()  # Access the request_id from context variable
     try:
-        outputs = await gemini_agent.generate_note(data_type, text, image_url, caption)
+        outputs = await gemini_agent.generate_note(text, image_url, caption)
         community_note = outputs.get("community_note", None)
         chinese_note = community_note
         if community_note is not None:
