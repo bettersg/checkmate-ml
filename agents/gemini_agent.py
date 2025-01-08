@@ -327,7 +327,6 @@ class GeminiAgent(FactCheckingAgentBaseClass):
 
     async def generate_note(
         self,
-        data_type: str = "text",
         text: Union[str, None] = None,
         image_url: Union[str, None] = None,
         caption: Union[str, None] = None,
@@ -343,10 +342,15 @@ class GeminiAgent(FactCheckingAgentBaseClass):
         Returns:
             A dictionary representing the community note.
         """
-        child_logger = logger.child(
-            data_type=data_type, text=text, image_url=image_url, caption=caption
-        )
+        child_logger = logger.child(text=text, image_url=image_url, caption=caption)
         child_logger.info("Generating community note")
+        # if both text and image_url are provided, throw error:
+        if text is not None and image_url is not None:
+            child_logger.error("Both 'text' and 'image_url' cannot be provided")
+            return {
+                "success": False,
+                "error": "Both 'text' and 'image_url' cannot be provided",
+            }
         start_time = time.time()  # Start the timer
         summarise_report = summarise_report_factory(
             text, image_url, caption
@@ -358,10 +362,10 @@ class GeminiAgent(FactCheckingAgentBaseClass):
                     "Unexpected: summary function already inside function_dict"
                 )
             self.function_dict["summarise_report"] = summarise_report
-        if data_type == "text":
+        if text is not None:
             parts = generate_text_parts(text)
 
-        elif data_type == "image":
+        elif image_url is not None:
             parts = generate_image_parts(image_url, caption)
 
         report_dict = await self.generate_report(parts.copy())
