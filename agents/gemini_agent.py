@@ -289,6 +289,7 @@ class GeminiAgent(FactCheckingAgentBaseClass):
                     continue
                 function_results = await asyncio.gather(*function_call_promises)
                 response_parts = GeminiAgent.flatten_and_organise(function_results)
+                messages.append(types.Content(parts=response_parts, role="user"))
                 # check if should end
                 for part in response_parts:
                     if (
@@ -304,7 +305,6 @@ class GeminiAgent(FactCheckingAgentBaseClass):
                             return_dict["success"] = True
                             logger.info("Report generated successfully")
                             return return_dict
-                messages.append(types.Content(parts=response_parts, role="user"))
                 think = not think
                 first_step = False
         except Exception as e:
