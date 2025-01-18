@@ -22,11 +22,12 @@ async def evaluate_generate_note(experiment_name):
         "test": [helpfulness_eval],
     }
 
+    scores = []
     for dataset_name, eval_functions in datasets.items():
         dataset = langfuse.get_dataset(dataset_name)
         print(f"Running experiment on dataset: {dataset_name}")
 
-        for item in dataset.items[:2]:
+        for item in dataset.items:
             with item.observe(run_name=f"{experiment_name}_{dataset_name}") as trace_id:
                 item.input['image_url'] = item.input['image_url'] if item.input['text'] is None else None # If text available, drop image_url
                 output = await get_outputs(**item.input)
@@ -58,8 +59,10 @@ async def evaluate_generate_note(experiment_name):
                         langfuse.score(
                             trace_id=trace_id, name="custom_eval_score", value=score_value
                         )
+                        scores.append(score_value)
             print(f"Item {item.id} done")
     print("All done!")
+    print('Average score for the experiment:', round(sum(scores)/len(scores),2))
     langfuse.flush()
 
 if __name__ == "__main__":
