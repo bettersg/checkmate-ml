@@ -1,6 +1,6 @@
 from langfuse import Langfuse
 from gemini_generation import get_outputs
-from .custom_eval_functions.exact_match import helpfulness_eval
+from .custom_eval_functions.helpfulness import helpfulness_eval
 import inspect
 import asyncio
 
@@ -29,7 +29,9 @@ async def evaluate_generate_note(experiment_name):
 
         for item in dataset.items:
             with item.observe(run_name=f"{experiment_name}_{dataset_name}") as trace_id:
-                item.input['image_url'] = item.input['image_url'] if item.input['text'] is None else None # If text available, drop image_url
+                item.input["image_url"] = (
+                    item.input["image_url"] if item.input["text"] is None else None
+                )  # If text available, drop image_url
                 output = await get_outputs(**item.input)
 
                 # Update eval_params with current values
@@ -54,18 +56,20 @@ async def evaluate_generate_note(experiment_name):
                     }
 
                     # Score only if text is available for now
-                    if required_params['input_text']['text'] is not None:
+                    if required_params["input_text"]["text"] is not None:
                         score_value = eval_function(**required_params)
                         langfuse.score(
-                            trace_id=trace_id, name="custom_eval_score", value=score_value
+                            trace_id=trace_id,
+                            name="custom_eval_score",
+                            value=score_value,
                         )
                         scores.append(score_value)
             print(f"Item {item.id} done")
     print("All done!")
-    print('Average score for the experiment:', round(sum(scores)/len(scores),2))
+    print("Average score for the experiment:", round(sum(scores) / len(scores), 2))
     langfuse.flush()
+
 
 if __name__ == "__main__":
     # Run the evaluation
     asyncio.run(evaluate_generate_note("generate_note_eval"))
-    
