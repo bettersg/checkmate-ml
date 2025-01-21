@@ -11,7 +11,6 @@ from sentence_transformers import SentenceTransformer
 # from ocr import end_to_end
 from ocr_v2 import perform_ocr
 from trivial_filter import check_should_review
-from community_note import generate_community_note
 from fastapi import HTTPException
 import datetime
 from sensitive_filter import check_is_sensitive
@@ -125,36 +124,36 @@ def get_redact(item: ItemText):
         }
 
 
-@app.post("/getCommunityNote")
-async def generate_community_note_endpoint(request: CommunityNoteRequest):
-    logger.info(
-        "Processing community note request",
-        has_text=bool(request.text),
-        has_image=bool(request.image_url),
-    )
-    try:
-        session_id = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
-        if request.text:
-            result = await generate_community_note(
-                session_id, data_type="text", text=request.text
-            )
-        elif request.image_url:
-            result = await generate_community_note(
-                session_id,
-                data_type="image",
-                image_url=request.image_url,
-                caption=request.caption,
-            )
-        else:
-            logger.error("Invalid request - missing content")
-            raise HTTPException(
-                status_code=400, detail="Either 'text' or 'image_url' must be provided."
-            )
-        logger.info("Community note generated successfully", session_id=session_id)
-        return result
-    except Exception as e:
-        logger.error("Failed to generate community note", error=str(e))
-        raise HTTPException(status_code=500, detail=str(e))
+# @app.post("/getCommunityNote")
+# async def generate_community_note_endpoint(request: CommunityNoteRequest):
+#     logger.info(
+#         "Processing community note request",
+#         has_text=bool(request.text),
+#         has_image=bool(request.image_url),
+#     )
+#     try:
+#         session_id = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
+#         if request.text:
+#             result = await generate_community_note(
+#                 session_id, data_type="text", text=request.text
+#             )
+#         elif request.image_url:
+#             result = await generate_community_note(
+#                 session_id,
+#                 data_type="image",
+#                 image_url=request.image_url,
+#                 caption=request.caption,
+#             )
+#         else:
+#             logger.error("Invalid request - missing content")
+#             raise HTTPException(
+#                 status_code=400, detail="Either 'text' or 'image_url' must be provided."
+#             )
+#         logger.info("Community note generated successfully", session_id=session_id)
+#         return result
+#     except Exception as e:
+#         logger.error("Failed to generate community note", error=str(e))
+#         raise HTTPException(status_code=500, detail=str(e))
 
 
 @app.post("/v2/getCommunityNote")

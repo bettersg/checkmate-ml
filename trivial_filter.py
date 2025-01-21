@@ -8,14 +8,10 @@ from langchain.schema import SystemMessage
 from langchain_openai.chat_models import ChatOpenAI
 import json
 
-from langfuse.openai import openai
+import openai
 from langfuse import Langfuse
 
-llm = ChatOpenAI(
-    model = "gpt-4o-mini",
-    temperature = 0,
-    seed = 11
-)
+llm = ChatOpenAI(model="gpt-4o-mini", temperature=0, seed=11)
 
 langfuse = Langfuse()
 
@@ -45,13 +41,12 @@ ai_prompt_template = AIMessagePromptTemplate.from_template(ai_template)
 messages = [SystemMessage(content=system_message)]
 
 for example in few_shot_examples:
-  messages.append(human_prompt_template.format(
-      message = example.get("message")
-  ))
-  messages.append(ai_prompt_template.format(
-      reasoning=example.get("reasoning"),
-      to_review=example.get("to_review")
-  ))
+    messages.append(human_prompt_template.format(message=example.get("message")))
+    messages.append(
+        ai_prompt_template.format(
+            reasoning=example.get("reasoning"), to_review=example.get("to_review")
+        )
+    )
 
 messages.append(human_prompt_template)
 
@@ -59,6 +54,7 @@ chat_prompt_template = ChatPromptTemplate.from_messages(messages)
 parser = JsonOutputParser()
 
 chain = chat_prompt_template | llm | parser
+
 
 def check_should_review(message):
     try:
@@ -68,4 +64,3 @@ def check_should_review(message):
     except Exception as e:
         print("Error occured in chain", e)
         return False
-  

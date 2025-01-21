@@ -320,7 +320,7 @@ class OpenAIAgent(FactCheckingAgentBaseClass):
                 first_step = False
             logger.error("Report couldn't be generated after 50 turns")
             return {
-                "error": str(e),
+                "error": "Report couldn't be generated after 50 turns",
                 "agent_trace": messages,
                 "success": False,
             }
@@ -330,6 +330,11 @@ class OpenAIAgent(FactCheckingAgentBaseClass):
                 error=str(e),
                 messages_count=len(messages),
             )
+            return {
+                "error": str(e),
+                "agent_trace": messages,
+                "success": False,
+            }
 
     async def generate_note(
         self,
@@ -349,7 +354,7 @@ class OpenAIAgent(FactCheckingAgentBaseClass):
             A dictionary representing the community note.
         """
         child_logger = logger.child(text=text, image_url=image_url, caption=caption)
-        child_logger.info("Screenshot API failedunity note")
+        child_logger.info("Generating community note")
         # if both text and image_url are provided, throw error:
         if text is not None and image_url is not None:
             child_logger.error("Both 'text' and 'image_url' cannot be provided")

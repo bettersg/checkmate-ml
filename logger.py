@@ -17,24 +17,8 @@ class JsonFormatter(logging.Formatter):
             "request_id": request_id_var.get(),
         }
 
-        # Add exception info if available
-        if record.exc_info:
-            exc_type, exc_value, exc_traceback = record.exc_info
-            formatted_tb = traceback.format_exception(
-                exc_type, exc_value, exc_traceback
-            )
-            log_record["error"] = {
-                "type": exc_type.__name__,
-                "message": str(exc_value),
-                "traceback": "".join(formatted_tb),  # Convert list to string
-            }
-
         if hasattr(record, "extra_data"):
             log_record.update(record.extra_data)
-
-        # Remove raw exc_info attribute to avoid double inclusion
-        if hasattr(record, "exc_info"):
-            record.exc_info = None
 
         return json.dumps(log_record)
 
@@ -72,7 +56,19 @@ class StructuredLogger(logging.Logger):
         """
         if exc_info is None and sys.exc_info()[0] is not None:
             exc_info = sys.exc_info()
-        kwargs["exc_info"] = exc_info
+
+        if exc_info:
+            exc_type, exc_value, exc_traceback = exc_info
+            formatted_tb = traceback.format_exception(
+                exc_type, exc_value, exc_traceback
+            )
+            kwargs["error"] = {
+                "type": exc_type.__name__,
+                "message": str(exc_value),
+                "traceback": "".join(formatted_tb),  # Combine traceback lines
+            }
+
+        # Don't pass raw `exc_info` further; it's already processed into `error`
         self.log(logging.ERROR, message, **kwargs)
 
     def debug(self, message, **kwargs):

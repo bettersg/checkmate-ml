@@ -12,7 +12,10 @@ load_dotenv()
 
 def retry_once_per_model(wait_time=2, fallback_models=None):
     if fallback_models is None:
-        fallback_models = ["gemini-2.0-flash-exp", "gemini-1.5-pro"]
+        fallback_models = [
+            "gemini-2.0-flash-exp",
+            "gemini-1.5-pro",
+        ]
 
     def decorator(func):  # Synchronous decorator
         @functools.wraps(func)

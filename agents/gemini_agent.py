@@ -264,7 +264,7 @@ class GeminiAgent(FactCheckingAgentBaseClass):
                     )
                 )
                 response = self.client.models.generate_content(
-                    model="gemini-2.0-flash-exp",
+                    model="gemini-2.0-flash-thinking-exp",
                     contents=messages,
                     config=types.GenerateContentConfig(
                         tools=[self.function_tool],
@@ -323,7 +323,7 @@ class GeminiAgent(FactCheckingAgentBaseClass):
                 first_step = False
             logger.error("Report couldn't be generated after 50 turns")
             return {
-                "error": str(e),
+                "error": "Report couldn't be generated after 50 turns",
                 "agent_trace": GeminiAgent.process_trace(messages),
                 "success": False,
             }
@@ -333,6 +333,11 @@ class GeminiAgent(FactCheckingAgentBaseClass):
                 error=str(e),
                 messages_count=len(messages),
             )
+            return {
+                "error": str(e),
+                "agent_trace": GeminiAgent.process_trace(messages),
+                "success": False,
+            }
 
     async def generate_note(
         self,
@@ -380,9 +385,10 @@ class GeminiAgent(FactCheckingAgentBaseClass):
         report_dict = await self.generate_report(parts.copy())
 
         duration = time.time() - start_time  # Calculate duration
-        report_dict["agent_time_taken"] = duration
+
         time.sleep(3)
         if report_dict.get("success") and report_dict.get("report"):
+            report_dict["agent_time_taken"] = duration
             summary_results = await summarise_report(report_dict["report"])
             if summary_results.get("success"):
                 report_dict["community_note"] = summary_results["community_note"]
