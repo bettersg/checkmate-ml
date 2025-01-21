@@ -4,6 +4,7 @@ from dotenv import load_dotenv
 import functools
 import time
 from logger import StructuredLogger
+from langfuse.decorators import observe
 
 logger = StructuredLogger("gemini_client")
 
@@ -54,9 +55,9 @@ def retry_once_per_model(wait_time=2, fallback_models=None):
 # Initialize the gemini client
 gemini_client = genai.Client(api_key=os.environ.get("GOOGLE_API_KEY"))
 
-# Apply the decorator to `models.generate_content`
+# Apply both decorators to `models.generate_content` with retry as outer decorator
 gemini_client.models.generate_content = retry_once_per_model(wait_time=2)(
-    gemini_client.models.generate_content
+    observe(as_type="generation")(gemini_client.models.generate_content)
 )
 
 __all__ = ["gemini_client"]

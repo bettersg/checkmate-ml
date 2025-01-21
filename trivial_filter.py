@@ -8,7 +8,6 @@ from langchain.schema import SystemMessage
 from langchain_openai.chat_models import ChatOpenAI
 import json
 
-import openai
 from langfuse import Langfuse
 
 llm = ChatOpenAI(model="gpt-4o-mini", temperature=0, seed=11)

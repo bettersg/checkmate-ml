@@ -1,7 +1,9 @@
 from google.genai import types
+from langfuse.decorators import observe
 from clients.gemini import gemini_client
 import json
 from enum import Enum
+
 
 translation_system_prompt = """You are a professional translator specializing in English to {language} translations. Your task is to translate the user's text while ensuring:
 1. The translation captures the meaning and context of the original text accurately.
@@ -18,6 +20,7 @@ class SupportedLanguage(Enum):
 supported_languages = {SupportedLanguage.CN.value: "Simplified Chinese"}
 
 
+@observe(name="translate_text")
 async def translate_text(text: str, language: str = SupportedLanguage.CN.value):
     """Translates the given text to the specified language."""
     if language not in SupportedLanguage._value2member_map_:

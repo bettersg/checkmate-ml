@@ -7,7 +7,7 @@ from langchain.prompts.chat import (
 from langchain_core.output_parsers import JsonOutputParser
 from langchain.schema import SystemMessage
 from langchain_openai.chat_models import ChatOpenAI
-from langfuse.openai import openai
+
 from langfuse import Langfuse
 
 

@@ -2,10 +2,12 @@ import requests
 import json
 import dotenv
 import os
+from langfuse.decorators import observe
 
 dotenv.load_dotenv()
 
 
+@observe()
 async def search_google(q):
     url = "https://google.serper.dev/search"
     headers = {

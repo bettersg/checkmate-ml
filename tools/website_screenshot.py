@@ -4,6 +4,7 @@ import requests
 import os
 from google.auth.transport.requests import Request
 from google.oauth2.id_token import fetch_id_token
+from langfuse.decorators import observe
 
 
 def get_identity_token(audience: str) -> str:
@@ -13,6 +14,7 @@ def get_identity_token(audience: str) -> str:
     return id_token
 
 
+@observe()
 async def get_website_screenshot(url):
     hostname = os.environ.get("SCREENSHOT_HOSTNAME")
 

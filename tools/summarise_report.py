@@ -3,6 +3,7 @@ from google.genai import types
 from clients.gemini import gemini_client
 from typing import Union, List
 from utils.gemini_utils import generate_image_parts, generate_text_parts
+from langfuse.decorators import observe, langfuse_context
 import json
 
 
@@ -50,6 +51,7 @@ def summarise_report_factory(
     Factory function that returns a summarise_report function with input_text, input_image_url, input_caption pre-set.
     """
 
+    @observe()
     async def summarise_report(report: str):
         """
         Summarise the report (with pre-set inputs for text, image URL, or caption).
@@ -65,7 +67,7 @@ def summarise_report_factory(
         parts.append(types.Part.from_text(f"***Report***: {report}\n****End Report***"))
         messages = [types.Content(parts=parts, role="user")]
         try:
-            response = gemini_client.models.generate_content(
+            response = await gemini_client.models.generate_content(
                 model="gemini-2.0-flash-exp",
                 contents=messages,
                 config=types.GenerateContentConfig(
@@ -95,6 +97,55 @@ def summarise_report_factory(
             return {"success": False, "error": "No community note generated"}
 
     return summarise_report
+
+
+@observe()
+async def summarise_report_nonfactory(
+    report: str,
+    input_text: Union[str, None] = None,
+    input_image_url: Union[str, None] = None,
+    input_caption: Union[str, None] = None,
+):
+    """
+    Summarise the report (with pre-set inputs for text, image URL, or caption).
+    """
+    if input_text is not None and input_image_url is not None:
+        raise ValueError("Only one of input_text or input_image_url should be provided")
+    if input_text:
+        parts = generate_text_parts(input_text)
+    elif input_image_url:
+        parts = generate_image_parts(input_image_url, input_caption)
+    parts.append(types.Part.from_text(f"***Report***: {report}\n****End Report***"))
+    messages = [types.Content(parts=parts, role="user")]
+    try:
+        response = await gemini_client.models.generate_content(
+            model="gemini-2.0-flash-exp",
+            contents=messages,
+            config=types.GenerateContentConfig(
+                systemInstruction=summary_prompt,
+                response_mime_type="application/json",
+                response_schema=summary_response_schema,
+                temperature=0.2,
+            ),
+        )
+    except Exception as e:
+        print(f"Error in generation: {e}")
+        return {"error": str(e), "success": False}
+    try:
+        response_json = json.loads(response.candidates[0].content.parts[0].text)
+    except Exception as e:
+        print(f"Error: {e}")
+        return {"success": False, "error": str(e)}
+    if not isinstance(response_json, dict):
+        print(f"response_json: {response_json}")
+        return {
+            "success": False,
+            "error": "Response from summariser is not a dictionary",
+        }
+    if response_json.get("community_note"):
+        return {"community_note": response_json["community_note"], "success": True}
+    else:
+        return {"success": False, "error": "No community note generated"}
 
 
 summarise_report_definition = dict(

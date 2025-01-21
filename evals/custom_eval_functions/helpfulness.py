@@ -1,4 +1,4 @@
-from langfuse.openai import openai
+from clients.openai import openai_client
 from langfuse.decorators import observe
 import json
 
@@ -26,7 +26,7 @@ def helpfulness_eval(input_text, output):
     """
 
     helpfulness_score = (
-        openai.chat.completions.create(
+        openai_client.chat.completions.create(
             messages=[
                 {
                     "role": "user",

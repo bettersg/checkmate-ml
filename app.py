@@ -3,8 +3,7 @@ from dotenv import load_dotenv
 load_dotenv()
 
 import joblib
-import numpy as np
-from fastapi import FastAPI
+from fastapi import FastAPI, BackgroundTasks
 from pydantic import BaseModel, Field
 from sentence_transformers import SentenceTransformer
 
@@ -12,9 +11,7 @@ from sentence_transformers import SentenceTransformer
 from ocr_v2 import perform_ocr
 from trivial_filter import check_should_review
 from fastapi import HTTPException
-import datetime
 from sensitive_filter import check_is_sensitive
-from typing import Optional
 from pii_mask import redact
 import json
 from gemini_generation import get_outputs
@@ -23,6 +20,13 @@ from models import CommunityNoteRequest, AgentResponse, SupportedModelProvider
 from middleware import RequestIDMiddleware  # Import the middleware
 from context import request_id_var  # Import the context variable
 from logger import StructuredLogger
+from langfuse.decorators import observe, langfuse_context
+import time
+
+langfuse_context.configure(
+    enabled=True
+    # enabled=os.getenv("ENVIRONMENT") != "development",
+)
 
 logger = StructuredLogger("checkmate-ml-api")
 
@@ -43,41 +47,51 @@ class ItemUrl(BaseModel):
     url: str
 
 
+def cleanup(background_tasks: BackgroundTasks, log_message: str = None):
+    if log_message:
+        background_tasks.add_task(logger.info, log_message)
+    background_tasks.add_task(langfuse_context.flush)
+
+
 @app.post("/embed")
-def get_embedding(item: ItemText):
+def get_embedding(item: ItemText, background_tasks: BackgroundTasks):
     logger.info("Processing embedding request", text=item.text[:100])
     embedding = embedding_model.encode(item.text)
-    logger.info("Embedding generated successfully")
-    return {"embedding": embedding.tolist()}
+    result = {"embedding": embedding.tolist()}
+    cleanup(background_tasks, "Embedding generated successfully")
+    return result
 
 
 @app.post("/getL1Category")
-def get_L1_category(item: ItemText):
+def get_L1_category(item: ItemText, background_tasks: BackgroundTasks):
     logger.info("Processing L1 category request", text=item.text[:100])
     embedding = embedding_model.encode(item.text)
     prediction = L1_svc.predict(embedding.reshape(1, -1))[0]
-    logger.info("Generated L1 category prediction", prediction=prediction)
-    return {"prediction": "irrelevant" if prediction == "trivial" else prediction}
+    result = {"prediction": "irrelevant" if prediction == "trivial" else prediction}
+    cleanup(background_tasks, "L1 category prediction complete")
+    return result
 
 
 @app.post("/sensitivity-filter")
-def get_sensitivity(item: ItemText):
+def get_sensitivity(item: ItemText, background_tasks: BackgroundTasks):
     logger.info("Processing sensitivity filter request", text=item.text[:100])
     is_sensitive = check_is_sensitive(item.text)
-    logger.info("Sensitivity check complete", is_sensitive=is_sensitive)
-    return {"is_sensitive": is_sensitive}
+    result = {"is_sensitive": is_sensitive}
+    cleanup(background_tasks, "Sensitivity check complete")
+    return result
 
 
 @app.post("/getNeedsChecking")
-def get_needs_checking(item: ItemText):
+def get_needs_checking(item: ItemText, background_tasks: BackgroundTasks):
     logger.info("Processing needs checking request", text=item.text[:100])
     should_review = check_should_review(item.text)
-    logger.info("Review check complete", needs_checking=should_review)
-    return {"needsChecking": should_review}
+    result = {"needsChecking": should_review}
+    cleanup(background_tasks, "Review check complete")
+    return result
 
 
 @app.post("/ocr-v2")
-def get_ocr(item: ItemUrl):
+def get_ocr(item: ItemUrl, background_tasks: BackgroundTasks):
     logger.info("Processing OCR request", url=item.url)
     results = perform_ocr(item.url)
     if "extracted_message" in results and results["extracted_message"]:
@@ -88,17 +102,16 @@ def get_ocr(item: ItemUrl):
         )
         results["prediction"] = prediction
     else:
-        logger.info("No message extracted from image", url=item.url)
         results["prediction"] = "unsure"
-    logger.info("OCR processing complete", prediction=results["prediction"])
+    cleanup(background_tasks, "OCR processing complete")
     return results
 
 
 @app.post("/redact")
-def get_redact(item: ItemText):
+def get_redact(item: ItemText, background_tasks: BackgroundTasks):
     logger.info("Processing redaction request", text=item.text[:100])
-    response, tokens_used = redact(item.text)
     try:
+        response, tokens_used = redact(item.text)
         response_dict = json.loads(response)
         redacted_message = item.text
         for redaction in response_dict["redacted"]:
@@ -111,54 +124,25 @@ def get_redact(item: ItemText):
             "tokens_used": tokens_used,
             "reasoning": response_dict["reasoning"],
         }
-        logger.info("Redaction complete", tokens_used=tokens_used)
+        cleanup(background_tasks, "Redaction complete")
         return result
-
     except Exception as e:
         logger.error("Redaction failed", error=str(e))
-        return {
+        result = {
             "redacted": "",
             "original": item.text,
             "tokens_used": tokens_used,
             "reasoning": "Error in redact function",
         }
-
-
-# @app.post("/getCommunityNote")
-# async def generate_community_note_endpoint(request: CommunityNoteRequest):
-#     logger.info(
-#         "Processing community note request",
-#         has_text=bool(request.text),
-#         has_image=bool(request.image_url),
-#     )
-#     try:
-#         session_id = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
-#         if request.text:
-#             result = await generate_community_note(
-#                 session_id, data_type="text", text=request.text
-#             )
-#         elif request.image_url:
-#             result = await generate_community_note(
-#                 session_id,
-#                 data_type="image",
-#                 image_url=request.image_url,
-#                 caption=request.caption,
-#             )
-#         else:
-#             logger.error("Invalid request - missing content")
-#             raise HTTPException(
-#                 status_code=400, detail="Either 'text' or 'image_url' must be provided."
-#             )
-#         logger.info("Community note generated successfully", session_id=session_id)
-#         return result
-#     except Exception as e:
-#         logger.error("Failed to generate community note", error=str(e))
-#         raise HTTPException(status_code=500, detail=str(e))
+        cleanup(background_tasks, "Redaction failed")
+        return result
 
 
 @app.post("/v2/getCommunityNote")
-async def get_gemini_note(
+@observe()
+async def get_community_note_api_handler(
     request: CommunityNoteRequest,
+    background_tasks: BackgroundTasks,
     provider: SupportedModelProvider = SupportedModelProvider.GEMINI,
 ) -> AgentResponse:
     logger.info(
@@ -188,9 +172,7 @@ async def get_gemini_note(
                 addPlanning=request.addPlanning,
                 provider=provider,
             )
-            logger.info(
-                "OpenAI/Deepseek note generated successfully", provider=provider.value
-            )
+            cleanup(background_tasks, f"{provider.value} note generated successfully")
             return result
         elif provider == SupportedModelProvider.GEMINI:
             result = await get_outputs(
@@ -199,7 +181,7 @@ async def get_gemini_note(
                 caption=request.caption,
                 addPlanning=request.addPlanning,
             )
-            logger.info("Gemini note generated successfully")
+            cleanup(background_tasks, "Gemini note generated successfully")
             return result
         else:
             logger.error("Unsupported provider specified", provider=provider.value)
@@ -213,9 +195,11 @@ async def get_gemini_note(
             status_code=e.status_code,
             detail=e.detail,
         )
+        cleanup(background_tasks, "Gemini note failed to generate")
         raise e
     except Exception as e:
         logger.error("Unexpected error in note generation", error=str(e))
+        cleanup(background_tasks, "Gemini note failed to generate")
         raise HTTPException(status_code=500, detail=str(e))
 
 

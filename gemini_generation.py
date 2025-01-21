@@ -15,6 +15,7 @@ from typing import Union, List
 from models import AgentResponse
 from context import request_id_var  # Import the context variable
 from logger import StructuredLogger
+from langfuse.decorators import observe
 
 system_prompt = """# Context
 
@@ -79,6 +80,7 @@ This is an automated message sent by the Singapore Government.
 child_logger = StructuredLogger("gemini_generation")
 
 
+@observe(name="get_outputs_gemini")
 async def get_outputs(
     text: Union[str, None] = None,
     image_url: Union[str, None] = None,

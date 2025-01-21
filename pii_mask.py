@@ -1,4 +1,4 @@
-from langfuse.openai import openai
+from clients.openai import openai_client
 from langfuse import Langfuse
 
 langfuse = Langfuse()
@@ -15,7 +15,7 @@ def redact(text):
 
     prompt_messages.append({"role": "user", "content": text})
 
-    response = openai.chat.completions.create(
+    response = openai_client.chat.completions.create(
         model=prompt.config["model"],
         messages=prompt_messages,
         temperature=prompt.config["temperature"],

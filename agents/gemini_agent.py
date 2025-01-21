@@ -6,9 +6,10 @@ from google.genai import types
 from utils.gemini_utils import get_image_part, generate_image_parts, generate_text_parts
 import asyncio
 import time
-from tools import summarise_report_factory
+from tools import summarise_report_nonfactory
 import json
 from logger import StructuredLogger
+from langfuse.decorators import observe, langfuse_context
 
 logger = StructuredLogger("gemini_agent")
 
@@ -222,6 +223,7 @@ class GeminiAgent(FactCheckingAgentBaseClass):
                 },
             )
 
+    @observe(name="generate_report_agent_gemini")
     async def generate_report(self, starting_parts):
         """Generates a report based on the provided starting parts.
         args:
@@ -339,6 +341,7 @@ class GeminiAgent(FactCheckingAgentBaseClass):
                 "success": False,
             }
 
+    @observe(name="generate_note_gemini")
     async def generate_note(
         self,
         text: Union[str, None] = None,
@@ -366,16 +369,7 @@ class GeminiAgent(FactCheckingAgentBaseClass):
                 "error": "Both 'text' and 'image_url' cannot be provided",
             }
         start_time = time.time()  # Start the timer
-        summarise_report = summarise_report_factory(
-            text, image_url, caption
-        )  # Creates a function that takes in a report and summarises it.
         cost_tracker = {"total_cost": 0, "cost_trace": []}  # To store the cost details
-        if "summarise_report" in self.function_dict:
-            if self.function_dict["summarise_report"] is not None:
-                logger.warning(
-                    "Unexpected: summary function already inside function_dict"
-                )
-            self.function_dict["summarise_report"] = summarise_report
         if text is not None:
             parts = generate_text_parts(text)
 
@@ -389,7 +383,12 @@ class GeminiAgent(FactCheckingAgentBaseClass):
         time.sleep(3)
         if report_dict.get("success") and report_dict.get("report"):
             report_dict["agent_time_taken"] = duration
-            summary_results = await summarise_report(report_dict["report"])
+            summary_results = await summarise_report_nonfactory(
+                report=report_dict["report"],
+                input_text=text,
+                input_image_url=image_url,
+                input_caption=caption,
+            )
             if summary_results.get("success"):
                 report_dict["community_note"] = summary_results["community_note"]
             else:
