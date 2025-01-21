@@ -83,18 +83,32 @@ class GeminiAgent(FactCheckingAgentBaseClass):
         return function_responses + other_responses
 
     @staticmethod
-    def process_trace(traces):
+    def process_trace(traces: List[types.Content]) -> List[dict]:
         """Utility method to process the parts returned by the Gemini model into a readable trace"""
         log_message = []
-        for trace in traces:
-            if trace.role == "user":
-                log_message.extend(GeminiAgent._process_user_trace(trace))
-            else:
-                log_message.extend(GeminiAgent._process_model_trace(trace))
+        trace_dicts = [trace.model_dump() for trace in traces]
+        for trace in trace_dicts:
+            trace["parts"] = [
+                {
+                    key: (
+                        "<INLINE_DATA>"
+                        if key == "inline_data" and value is not None
+                        else (
+                            "<FILE_DATA>"
+                            if key == "file_data" and value is not None
+                            else value
+                        )
+                    )
+                    for key, value in part.items()
+                    if value is not None
+                }
+                for part in trace["parts"]
+            ]
+            log_message.append(trace)
         return log_message
 
     @staticmethod
-    def _process_user_trace(trace):
+    def _process_user_trace(trace: dict):
         """Utility method to process the user parts of the trace"""
         responses = []
         for part in trace.parts:
@@ -110,7 +124,7 @@ class GeminiAgent(FactCheckingAgentBaseClass):
                 response = {"role": "user", "text": "<IMAGE_DATA>"}
             elif part.inline_data is not None:
                 response = {"role": "user", "text": "<INLINE_DATA>"}
-            responses.append(json.dumps(response, indent=2))
+            responses.append(response)
         return responses
 
     @staticmethod
@@ -318,7 +332,7 @@ class GeminiAgent(FactCheckingAgentBaseClass):
                 "agent_trace": GeminiAgent.process_trace(messages),
                 "success": False,
             }
-        logger.error("Report generated successfully")
+        logger.error("Report couldn't be generated after 50 turns")
         return {
             "success": False,
             "error": "Couldn't generate after 50 turns",

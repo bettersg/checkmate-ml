@@ -12,3 +12,4 @@ credentials/
 .venv/
 .python-version
 .pytest_cache/
+.DS_Store
