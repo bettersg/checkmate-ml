@@ -321,23 +321,18 @@ class GeminiAgent(FactCheckingAgentBaseClass):
                 messages.append(types.Content(parts=response_parts, role="user"))
                 think = not think
                 first_step = False
+            logger.error("Report couldn't be generated after 50 turns")
+            return {
+                "error": str(e),
+                "agent_trace": GeminiAgent.process_trace(messages),
+                "success": False,
+            }
         except Exception as e:
             logger.error(
                 "Error during report generation",
                 error=str(e),
                 messages_count=len(messages),
             )
-            return {
-                "error": str(e),
-                "agent_trace": GeminiAgent.process_trace(messages),
-                "success": False,
-            }
-        logger.error("Report couldn't be generated after 50 turns")
-        return {
-            "success": False,
-            "error": "Couldn't generate after 50 turns",
-            "agent_trace": GeminiAgent.process_trace(messages),
-        }
 
     async def generate_note(
         self,

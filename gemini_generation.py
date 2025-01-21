@@ -14,6 +14,7 @@ from datetime import datetime
 from typing import Union, List
 from models import AgentResponse
 from context import request_id_var  # Import the context variable
+from logger import StructuredLogger
 
 system_prompt = """# Context
 
@@ -75,6 +76,8 @@ Characteristics of legitimate government communications:
 This is an automated message sent by the Singapore Government.
 ```End Govt SMS Format```"""
 
+child_logger = StructuredLogger("gemini_generation")
+
 
 async def get_outputs(
     text: Union[str, None] = None,
@@ -107,7 +110,7 @@ async def get_outputs(
             try:
                 chinese_note = await translate_text(community_note, language="cn")
             except Exception as e:
-                print(f"Error in translation: {e}")
+                child_logger.error(f"Error in translation: {e}")
 
         return AgentResponse(
             requestId=request_id,
@@ -123,7 +126,7 @@ async def get_outputs(
             agentTrace=outputs.get("agent_trace", None),
         )
     except Exception as e:
-        print(f"Error in generating community note: {e}")
+        child_logger.error(f"Error in generating community note: {e}")
         return AgentResponse(
             requestId=request_id,
             success=False,
