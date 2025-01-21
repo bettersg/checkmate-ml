@@ -107,55 +107,6 @@ class OpenAIAgent(FactCheckingAgentBaseClass):
                 other_responses.append(item)
         return function_responses + other_responses
 
-    # @staticmethod
-    # def process_trace(messages: List[dict]) -> List[str]:
-    #     """Utility method to process the parts returned by the Gemini model into a readable trace"""
-    #     log_message = []
-    #     for trace in messages:
-    #         if trace.get("role") == "user":
-    #             log_message.extend(trace)
-    #         else:
-    #             log_message.extend(OpenAIAgent._process_model_trace(trace))
-    #     return log_message
-
-    # @staticmethod
-    # def _process_user_trace(trace):
-    #     """Utility method to process the user parts of the trace"""
-    #     responses = []
-    #     for part in trace.parts:
-    #         if part.function_response is not None:
-    #             response = {
-    #                 "role": "user",
-    #                 "name": part.function_response.name,
-    #                 "response": part.function_response.response,
-    #             }
-    #         elif part.text is not None:
-    #             response = {"role": "user", "text": part.text}
-    #         elif part.file_data is not None:
-    #             response = {"role": "user", "text": "<IMAGE_DATA>"}
-    #         elif part.inline_data is not None:
-    #             response = {"role": "user", "text": "<INLINE_DATA>"}
-    #         responses.append(json.dumps(response, indent=2))
-    #     return responses
-
-    # @staticmethod
-    # def _process_model_trace(trace):
-    #     """Utility method to process the model parts of the trace"""
-    #     responses = []
-    #     for part in trace.parts:
-    #         try:
-    #             response = {
-    #                 "role": "model",
-    #                 "name": part.function_call.name,
-    #                 "response": part.function_call.args,
-    #             }
-    #             responses.append(json.dumps(response, indent=2))
-    #         except Exception as e:
-    #             logger.error(
-    #                 "Error processing model trace", error=str(e), part=str(part)
-    #             )
-    #     return responses
-
     def prune_tools(
         self,
         is_first_step: bool,
@@ -248,52 +199,58 @@ class OpenAIAgent(FactCheckingAgentBaseClass):
                 tool_call_id,
             )
 
-        # try:
-        result = await self.function_dict[function_name](**function_args)
-        if function_name == "get_website_screenshot":
-            url = function_args.get("url", "unknown URL")
-            self.screenshot_count += 1
-            if not result["success"] or result.get("result") is None:
-                child_logger.warn("Screenshot API failed")
-                return
-            else:
-                child_logger.info("Screenshot Successfully taken")
-                return [
-                    generate_result(
-                        "Screenshot successfully taken and will be subsequently appended.",
-                        tool_call_id,
-                    ),
-                    {
-                        "role": "user",
-                        "content": [
-                            {
-                                "type": "text",
-                                "text": f"Here is the screenshot for {url} returned by {function_name}",
-                            },
-                            {
-                                "type": "image_url",
-                                "image_url": {
-                                    "url": result["result"],
+        try:
+            result = await self.function_dict[function_name](**function_args)
+            if function_name == "get_website_screenshot":
+                url = function_args.get("url", "unknown URL")
+                self.screenshot_count += 1
+                if not result["success"] or result.get("result") is None:
+                    child_logger.warn("Screenshot API failed")
+                    return
+                else:
+                    child_logger.info("Screenshot Successfully taken")
+                    return [
+                        generate_result(
+                            "Screenshot successfully taken and will be subsequently appended.",
+                            tool_call_id,
+                        ),
+                        {
+                            "role": "user",
+                            "content": [
+                                {
+                                    "type": "text",
+                                    "text": f"Here is the screenshot for {url} returned by {function_name}",
                                 },
-                            },
-                        ],
-                    },
-                ]
-        else:
-            if function_name == "search_google":
-                self.search_count += 1
-            if result.get("result") is None or result.get("success") is False:
-                child_logger.warn(f"Issue with tool call {function_name}")
+                                {
+                                    "type": "image_url",
+                                    "image_url": {
+                                        "url": result["result"],
+                                    },
+                                },
+                            ],
+                        },
+                    ]
             else:
-                child_logger.info(f"Function {function_name} executed successfully")
-            return_dict = generate_result(result, tool_call_id)
+                if function_name == "search_google":
+                    self.search_count += 1
+                if result.get("result") is None or result.get("success") is False:
+                    child_logger.warn(f"Issue with tool call {function_name}")
+                else:
+                    child_logger.info(f"Function {function_name} executed successfully")
+                return_dict = generate_result(result, tool_call_id)
 
-            if function_name == "submit_report_for_review" and result.get(
-                "result", {}
-            ).get("passedReview"):
-                return_dict["completed"] = True
-                return_dict["return_object"] = function_args
-            return return_dict
+                if function_name == "submit_report_for_review" and result.get(
+                    "result", {}
+                ).get("passedReview"):
+                    return_dict["completed"] = True
+                    return_dict["return_object"] = function_args
+                return return_dict
+        except Exception as e:
+            child_logger.error(f"Error calling function {function_name}", error=str(e))
+            return generate_result(
+                f"Function {function_name} generated an error: {str(e)}",
+                tool_call_id,
+            )
 
     async def generate_report(self, starting_content) -> dict:
         """Generates a report based on the provided starting parts.
@@ -314,59 +271,65 @@ class OpenAIAgent(FactCheckingAgentBaseClass):
         completed = False
         think = True
         first_step = True
-        # try:
-        while len(messages) < 50 and not completed:
-            system_prompt = self.system_prompt.format(
-                remaining_searches=self.remaining_searches,
-                remaining_screenshots=self.remaining_screenshots,
-            )
-
-            completion = self.client.chat.completions.create(
-                model=self.model,
-                messages=messages,
-                temperature=0,
-                tools=self.prune_tools(
-                    is_first_step=first_step,
-                    is_plan_step=think,
-                ),
-                tool_choice="required",
-            )
-            messages.append(completion.choices[0].message.to_dict())
-            tool_calls = completion.choices[0].message.tool_calls
-
-            if tool_calls is None or len(tool_calls) == 0:
-                logger.error("No tool calls returned")
-                messages.append(
-                    {
-                        "role": "system",
-                        "content": "You should only be using the provided tools / functions",
-                    }
+        try:
+            while len(messages) < 50 and not completed:
+                system_prompt = self.system_prompt.format(
+                    remaining_searches=self.remaining_searches,
+                    remaining_screenshots=self.remaining_screenshots,
                 )
 
-            function_call_promises = []
+                completion = self.client.chat.completions.create(
+                    model=self.model,
+                    messages=messages,
+                    temperature=0,
+                    tools=self.prune_tools(
+                        is_first_step=first_step,
+                        is_plan_step=think,
+                    ),
+                    tool_choice="required",
+                )
+                messages.append(completion.choices[0].message.to_dict())
+                tool_calls = completion.choices[0].message.tool_calls
 
-            for tool_call in tool_calls:
-                function_call_promise = self.call_function(tool_call)
-                function_call_promises.append(function_call_promise)
+                if tool_calls is None or len(tool_calls) == 0:
+                    logger.error("No tool calls returned")
+                    messages.append(
+                        {
+                            "role": "system",
+                            "content": "You should only be using the provided tools / functions",
+                        }
+                    )
 
-            function_results = await asyncio.gather(*function_call_promises)
-            tool_call_responses = OpenAIAgent.flatten_and_organise(function_results)
-            # check if should end
-            for tool_call_response in tool_call_responses:
-                if tool_call_response.get("completed"):
-                    return_object = tool_call_response.get("return_object")
-                    return_object["success"] = True
-                    return_object["agent_trace"] = messages
-                    return return_object
-            messages.extend(tool_call_responses)
-            think = not think
-            first_step = False
-        logger.error("Report couldn't be generated after 50 turns")
-        return {
-            "success": False,
-            "error": "Couldn't generate after 50 turns",
-            "agent_trace": messages,
-        }
+                function_call_promises = []
+
+                for tool_call in tool_calls:
+                    function_call_promise = self.call_function(tool_call)
+                    function_call_promises.append(function_call_promise)
+
+                function_results = await asyncio.gather(*function_call_promises)
+                tool_call_responses = OpenAIAgent.flatten_and_organise(function_results)
+                # check if should end
+                for tool_call_response in tool_call_responses:
+                    if tool_call_response.get("completed"):
+                        return_object = tool_call_response.get("return_object")
+                        return_object["success"] = True
+                        return_object["agent_trace"] = messages
+                        return return_object
+                messages.extend(tool_call_responses)
+                think = not think
+                first_step = False
+            logger.error("Report couldn't be generated after 50 turns")
+            return {
+                "error": str(e),
+                "agent_trace": messages,
+                "success": False,
+            }
+        except Exception as e:
+            logger.error(
+                "Error during report generation",
+                error=str(e),
+                messages_count=len(messages),
+            )
 
     async def generate_note(
         self,
@@ -386,7 +349,7 @@ class OpenAIAgent(FactCheckingAgentBaseClass):
             A dictionary representing the community note.
         """
         child_logger = logger.child(text=text, image_url=image_url, caption=caption)
-        child_logger.info("Generating community note")
+        child_logger.info("Screenshot API failedunity note")
         # if both text and image_url are provided, throw error:
         if text is not None and image_url is not None:
             child_logger.error("Both 'text' and 'image_url' cannot be provided")

@@ -23,6 +23,9 @@ from openai_generation import get_outputs as get_openai_outputs
 from models import CommunityNoteRequest, AgentResponse, SupportedModelProvider
 from middleware import RequestIDMiddleware  # Import the middleware
 from context import request_id_var  # Import the context variable
+from logger import StructuredLogger
+
+logger = StructuredLogger("checkmate-ml-api")
 
 app = FastAPI()
 
@@ -41,61 +44,61 @@ class ItemUrl(BaseModel):
     url: str
 
 
-# class NoteText(BaseModel):
-#     text: str
-
-# class NoteImage(BaseModel):
-#     image_url: str
-#     caption: str = None
-
-
 @app.post("/embed")
 def get_embedding(item: ItemText):
+    logger.info("Processing embedding request", text=item.text[:100])
     embedding = embedding_model.encode(item.text)
+    logger.info("Embedding generated successfully")
     return {"embedding": embedding.tolist()}
 
 
 @app.post("/getL1Category")
 def get_L1_category(item: ItemText):
+    logger.info("Processing L1 category request", text=item.text[:100])
     embedding = embedding_model.encode(item.text)
     prediction = L1_svc.predict(embedding.reshape(1, -1))[0]
-    print(f"Prediction: {prediction}")
+    logger.info("Generated L1 category prediction", prediction=prediction)
     return {"prediction": "irrelevant" if prediction == "trivial" else prediction}
 
 
 @app.post("/sensitivity-filter")
 def get_sensitivity(item: ItemText):
+    logger.info("Processing sensitivity filter request", text=item.text[:100])
     is_sensitive = check_is_sensitive(item.text)
+    logger.info("Sensitivity check complete", is_sensitive=is_sensitive)
     return {"is_sensitive": is_sensitive}
 
 
 @app.post("/getNeedsChecking")
 def get_needs_checking(item: ItemText):
+    logger.info("Processing needs checking request", text=item.text[:100])
     should_review = check_should_review(item.text)
+    logger.info("Review check complete", needs_checking=should_review)
     return {"needsChecking": should_review}
 
 
 @app.post("/ocr-v2")
 def get_ocr(item: ItemUrl):
-    print(f"GenAI OCR called on {item.url}")
+    logger.info("Processing OCR request", url=item.url)
     results = perform_ocr(item.url)
     if "extracted_message" in results and results["extracted_message"]:
         extracted_message = results["extracted_message"]
-        print(f"Extracted message: {extracted_message}")
+        logger.info("Message extracted from image", message=extracted_message[:100])
         prediction = get_L1_category(ItemText(text=extracted_message)).get(
             "prediction", "unsure"
         )
         results["prediction"] = prediction
     else:
-        print(f"No extracted message in results")
+        logger.info("No message extracted from image", url=item.url)
         results["prediction"] = "unsure"
+    logger.info("OCR processing complete", prediction=results["prediction"])
     return results
 
 
 @app.post("/redact")
 def get_redact(item: ItemText):
+    logger.info("Processing redaction request", text=item.text[:100])
     response, tokens_used = redact(item.text)
-    print(f"Tokens used: {tokens_used}")
     try:
         response_dict = json.loads(response)
         redacted_message = item.text
@@ -103,15 +106,17 @@ def get_redact(item: ItemText):
             redacted_text = redaction["text"]
             replacement = redaction["replaceWith"]
             redacted_message = redacted_message.replace(redacted_text, replacement)
-        return {
+        result = {
             "redacted": redacted_message,
             "original": item.text,
             "tokens_used": tokens_used,
             "reasoning": response_dict["reasoning"],
         }
+        logger.info("Redaction complete", tokens_used=tokens_used)
+        return result
 
     except Exception as e:
-        print(f"Error: {e}")
+        logger.error("Redaction failed", error=str(e))
         return {
             "redacted": "",
             "original": item.text,
@@ -122,6 +127,11 @@ def get_redact(item: ItemText):
 
 @app.post("/getCommunityNote")
 async def generate_community_note_endpoint(request: CommunityNoteRequest):
+    logger.info(
+        "Processing community note request",
+        has_text=bool(request.text),
+        has_image=bool(request.image_url),
+    )
     try:
         session_id = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
         if request.text:
@@ -136,12 +146,14 @@ async def generate_community_note_endpoint(request: CommunityNoteRequest):
                 caption=request.caption,
             )
         else:
+            logger.error("Invalid request - missing content")
             raise HTTPException(
                 status_code=400, detail="Either 'text' or 'image_url' must be provided."
             )
-
+        logger.info("Community note generated successfully", session_id=session_id)
         return result
     except Exception as e:
+        logger.error("Failed to generate community note", error=str(e))
         raise HTTPException(status_code=500, detail=str(e))
 
 
@@ -150,6 +162,12 @@ async def get_gemini_note(
     request: CommunityNoteRequest,
     provider: SupportedModelProvider = SupportedModelProvider.GEMINI,
 ) -> AgentResponse:
+    logger.info(
+        "Processing v2 community note request",
+        provider=provider.value,
+        has_text=bool(request.text),
+        has_image=bool(request.image_url),
+    )
     try:
         if request.text is None and request.image_url is None:
             raise HTTPException(
@@ -160,65 +178,45 @@ async def get_gemini_note(
                 status_code=400,
                 detail="Only one of 'text' or 'image_url' should be provided.",
             )
-        print(provider)
         if (
             provider == SupportedModelProvider.OPENAI
             or provider == SupportedModelProvider.DEEPSEEK
         ):
-            return await get_openai_outputs(
+            result = await get_openai_outputs(
                 text=request.text,
                 image_url=request.image_url,
                 caption=request.caption,
                 addPlanning=request.addPlanning,
                 provider=provider,
             )
+            logger.info(
+                "OpenAI/Deepseek note generated successfully", provider=provider.value
+            )
+            return result
         elif provider == SupportedModelProvider.GEMINI:
-            return await get_outputs(
+            result = await get_outputs(
                 text=request.text,
                 image_url=request.image_url,
                 caption=request.caption,
                 addPlanning=request.addPlanning,
             )
+            logger.info("Gemini note generated successfully")
+            return result
         else:
+            logger.error("Unsupported provider specified", provider=provider.value)
             raise HTTPException(
                 status_code=400, detail=f"Unsupported model provider: {provider}"
             )
 
     except HTTPException as e:
+        logger.error(
+            "HTTP exception in note generation",
+            status_code=e.status_code,
+            detail=e.detail,
+        )
         raise e
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
-
-
-@app.post("/v2a/getCommunityNote")
-async def get_openai_note(request: CommunityNoteRequest) -> AgentResponse:
-    try:
-        if request.text is None and request.image_url is None:
-            raise HTTPException(
-                status_code=400, detail="Either 'text' or 'image_url' must be provided."
-            )
-        if request.text is not None and request.image_url is not None:
-            raise HTTPException(
-                status_code=400,
-                detail="Only one of 'text' or 'image_url' should be provided.",
-            )
-        elif request.text:
-            return await get_openai_outputs(
-                text=request.text, addPlanning=request.addPlanning
-            )
-        elif request.image_url:
-            return await get_openai_outputs(
-                image_url=request.image_url,
-                caption=request.caption,
-                addPlanning=request.addPlanning,
-            )
-        else:
-            raise HTTPException(
-                status_code=400, detail="Either 'text' or 'image_url' must be provided."
-            )
-    except HTTPException as e:
-        raise e
-    except Exception as e:
+        logger.error("Unexpected error in note generation", error=str(e))
         raise HTTPException(status_code=500, detail=str(e))
 
 

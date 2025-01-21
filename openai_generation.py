@@ -14,7 +14,7 @@ from datetime import datetime
 from typing import Union, List
 from models import AgentResponse, SupportedModelProvider
 from context import request_id_var  # Import the context variable
-import os
+from logger import StructuredLogger
 
 system_prompt = """# Context
 
@@ -76,6 +76,8 @@ Characteristics of legitimate government communications:
 This is an automated message sent by the Singapore Government.
 ```End Govt SMS Format```"""
 
+child_logger = StructuredLogger("openai_generation")
+
 
 async def get_outputs(
     text: Union[str, None] = None,
@@ -108,39 +110,39 @@ async def get_outputs(
         model=model,
     )
     request_id = request_id_var.get()  # Access the request_id from context variable
-    # try:
-    outputs = await openai_agent.generate_note(text, image_url, caption)
-    community_note = outputs.get("community_note", None)
-    chinese_note = community_note
-    if community_note is not None:
-        try:
-            chinese_note = await translate_text(community_note, language="cn")
-        except Exception as e:
-            print(f"Error in translation: {e}")
+    try:
+        outputs = await openai_agent.generate_note(text, image_url, caption)
+        community_note = outputs.get("community_note", None)
+        chinese_note = community_note
+        if community_note is not None:
+            try:
+                chinese_note = await translate_text(community_note, language="cn")
+            except Exception as e:
+                child_logger.error(f"Error in translation: {e}")
 
-    return AgentResponse(
-        requestId=request_id,
-        success=outputs.get("success", False),
-        en=community_note,
-        cn=chinese_note,
-        links=outputs.get("sources", None),
-        isControversial=outputs.get("isControversial", False),
-        isVideo=outputs.get("isVideo", False),
-        isAccessBlocked=outputs.get("isAccessBlocked", False),
-        report=outputs.get("report", None),
-        totalTimeTaken=outputs.get("total_time_taken", None),
-        agentTrace=outputs.get("agent_trace", None),
-    )
-    # except Exception as e:
-    #     print(f"Error in generating community note: {e}")
-    #     return AgentResponse(
-    #         requestId=request_id,
-    #         success=False,
-    #         errorMessage=str(e),
-    #         agentTrace=(
-    #             outputs.get("agent_trace", None) if "outputs" in locals() else None
-    #         ),
-    #     )
+        return AgentResponse(
+            requestId=request_id,
+            success=outputs.get("success", False),
+            en=community_note,
+            cn=chinese_note,
+            links=outputs.get("sources", None),
+            isControversial=outputs.get("isControversial", False),
+            isVideo=outputs.get("isVideo", False),
+            isAccessBlocked=outputs.get("isAccessBlocked", False),
+            report=outputs.get("report", None),
+            totalTimeTaken=outputs.get("total_time_taken", None),
+            agentTrace=outputs.get("agent_trace", None),
+        )
+    except Exception as e:
+        child_logger.error(f"Error in generating community note: {e}")
+        return AgentResponse(
+            requestId=request_id,
+            success=False,
+            errorMessage=str(e),
+            agentTrace=(
+                outputs.get("agent_trace", None) if "outputs" in locals() else None
+            ),
+        )
 
 
 if __name__ == "__main__":
