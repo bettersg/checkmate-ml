@@ -101,6 +101,9 @@ class OpenAIAgent(FactCheckingAgentBaseClass):
         function_responses = []
         other_responses = []
         for item in flattened_results:
+            if item is None:
+                logger.warn("None item found in flattened results")
+                continue
             if item.get("role") == "tool":
                 function_responses.append(item)
             else:
@@ -206,7 +209,9 @@ class OpenAIAgent(FactCheckingAgentBaseClass):
                 self.screenshot_count += 1
                 if not result["success"] or result.get("result") is None:
                     child_logger.warn("Screenshot API failed")
-                    return
+                    return generate_result(
+                        f"Screenshot API failed for {url}", tool_call_id
+                    )
                 else:
                     child_logger.info("Screenshot Successfully taken")
                     return [
