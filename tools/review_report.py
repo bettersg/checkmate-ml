@@ -1,7 +1,7 @@
 # tools/review_report.py
 
 from google.genai import types
-
+from collections import OrderedDict
 from clients.gemini import gemini_client
 import json
 
@@ -23,16 +23,24 @@ Points to note:
 
 response_schema = {
     "type": "OBJECT",
-    "properties": {
-        "feedback": {
-            "type": "STRING",
-            "description": "Your feedback on the report, if any",
-        },
-        "passedReview": {
-            "type": "BOOLEAN",
-            "description": "A boolean indicating whether the item passed the review",
-        },
-    },
+    "properties": OrderedDict(
+        [
+            (
+                "feedback",
+                {
+                    "type": "STRING",
+                    "description": "Your feedback on the report, if any",
+                },
+            ),
+            (
+                "passedReview",
+                {
+                    "type": "BOOLEAN",
+                    "description": "A boolean indicating whether the item passed the review",
+                },
+            ),
+        ]
+    ),
 }
 
 
@@ -63,32 +71,49 @@ review_report_definition = dict(
     description="Submits a report, which concludes the task.",
     parameters={
         "type": "OBJECT",
-        "properties": {
-            "report": {
-                "type": "STRING",
-                "description": "The content of the report. This should enough context for readers to stay safe and informed. Try and be succinct.",
-            },
-            "sources": {
-                "type": "ARRAY",
-                "items": {
-                    "type": "STRING",
-                    "description": "A link from which you sourced content for your report.",
-                },
-                "description": "A list of links from which your report is based. Avoid including the original link sent in for checking as that is obvious.",
-            },
-            "isControversial": {
-                "type": "BOOLEAN",
-                "description": "True if the content contains political or religious viewpoints likely to be divisive.",
-            },
-            "isVideo": {
-                "type": "BOOLEAN",
-                "description": "True if the content or URL points to a video (e.g., YouTube, TikTok, Instagram Reels, Facebook videos).",
-            },
-            "isAccessBlocked": {
-                "type": "BOOLEAN",
-                "description": "True if the content or URL is inaccessible/removed/blocked. An example is being led to a login page instead of post content.",
-            },
-        },
+        "properties": OrderedDict(
+            [
+                (
+                    "report",
+                    {
+                        "type": "STRING",
+                        "description": "The content of the report. This should enough context for readers to stay safe and informed. Try and be succinct.",
+                    },
+                ),
+                (
+                    "sources",
+                    {
+                        "type": "ARRAY",
+                        "items": {
+                            "type": "STRING",
+                            "description": "A link from which you sourced content for your report.",
+                        },
+                        "description": "A list of links from which your report is based. Avoid including the original link sent in for checking as that is obvious.",
+                    },
+                ),
+                (
+                    "isControversial",
+                    {
+                        "type": "BOOLEAN",
+                        "description": "True if the content contains political or religious viewpoints that are grounded in opinions rather than provable facts, and are likely to be divisive or polarizing.",
+                    },
+                ),
+                (
+                    "isVideo",
+                    {
+                        "type": "BOOLEAN",
+                        "description": "True if the content or URL sent by the user to be checked points to a video (e.g., YouTube, TikTok, Instagram Reels, Facebook videos).",
+                    },
+                ),
+                (
+                    "isAccessBlocked",
+                    {
+                        "type": "BOOLEAN",
+                        "description": "True if the content or URL sent by the user to be checked is inaccessible/removed/blocked. An example is being led to a login page instead of post content.",
+                    },
+                ),
+            ]
+        ),
         "required": [
             "report",
             "sources",
