@@ -19,7 +19,8 @@ from typing import Optional
 from pii_mask import redact
 import json
 from gemini_generation import get_outputs
-from models import CommunityNoteRequest, AgentResponse
+from openai_generation import get_outputs as get_openai_outputs
+from models import CommunityNoteRequest, AgentResponse, SupportedModelProvider
 from middleware import RequestIDMiddleware  # Import the middleware
 from context import request_id_var  # Import the context variable
 
@@ -145,7 +146,52 @@ async def generate_community_note_endpoint(request: CommunityNoteRequest):
 
 
 @app.post("/v2/getCommunityNote")
-async def get_gemini_note(request: CommunityNoteRequest) -> AgentResponse:
+async def get_gemini_note(
+    request: CommunityNoteRequest,
+    provider: SupportedModelProvider = SupportedModelProvider.GEMINI,
+) -> AgentResponse:
+    try:
+        if request.text is None and request.image_url is None:
+            raise HTTPException(
+                status_code=400, detail="Either 'text' or 'image_url' must be provided."
+            )
+        if request.text is not None and request.image_url is not None:
+            raise HTTPException(
+                status_code=400,
+                detail="Only one of 'text' or 'image_url' should be provided.",
+            )
+        print(provider)
+        if (
+            provider == SupportedModelProvider.OPENAI
+            or provider == SupportedModelProvider.DEEPSEEK
+        ):
+            return await get_openai_outputs(
+                text=request.text,
+                image_url=request.image_url,
+                caption=request.caption,
+                addPlanning=request.addPlanning,
+                provider=provider,
+            )
+        elif provider == SupportedModelProvider.GEMINI:
+            return await get_outputs(
+                text=request.text,
+                image_url=request.image_url,
+                caption=request.caption,
+                addPlanning=request.addPlanning,
+            )
+        else:
+            raise HTTPException(
+                status_code=400, detail=f"Unsupported model provider: {provider}"
+            )
+
+    except HTTPException as e:
+        raise e
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.post("/v2a/getCommunityNote")
+async def get_openai_note(request: CommunityNoteRequest) -> AgentResponse:
     try:
         if request.text is None and request.image_url is None:
             raise HTTPException(
@@ -157,9 +203,11 @@ async def get_gemini_note(request: CommunityNoteRequest) -> AgentResponse:
                 detail="Only one of 'text' or 'image_url' should be provided.",
             )
         elif request.text:
-            return await get_outputs(text=request.text, addPlanning=request.addPlanning)
+            return await get_openai_outputs(
+                text=request.text, addPlanning=request.addPlanning
+            )
         elif request.image_url:
-            return await get_outputs(
+            return await get_openai_outputs(
                 image_url=request.image_url,
                 caption=request.caption,
                 addPlanning=request.addPlanning,

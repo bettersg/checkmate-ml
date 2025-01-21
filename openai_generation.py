@@ -8,12 +8,13 @@ from tools import (
     translate_text,
 )
 
-from agents.gemini_agent import GeminiAgent
-from clients.gemini import gemini_client
+from agents.openai_agent import OpenAIAgent
+from clients.openai import create_openai_client
 from datetime import datetime
 from typing import Union, List
-from models import AgentResponse
+from models import AgentResponse, SupportedModelProvider
 from context import request_id_var  # Import the context variable
+import os
 
 system_prompt = """# Context
 
@@ -81,9 +82,16 @@ async def get_outputs(
     image_url: Union[str, None] = None,
     caption: Union[str, None] = None,
     addPlanning: bool = False,
+    provider: SupportedModelProvider = SupportedModelProvider.OPENAI,
 ):
-    gemini_agent = GeminiAgent(
-        gemini_client,
+    openai_client = create_openai_client(provider)
+    if provider == SupportedModelProvider.OPENAI:
+        model = "gpt-4o"
+    elif provider == SupportedModelProvider.DEEPSEEK:
+        model = "deepseek-chat"
+
+    openai_agent = OpenAIAgent(
+        openai_client,
         tool_list=[
             search_google_tool,
             get_screenshot_tool,
@@ -97,41 +105,42 @@ async def get_outputs(
         ),
         include_planning_step=addPlanning,
         temperature=0.2,
+        model=model,
     )
     request_id = request_id_var.get()  # Access the request_id from context variable
-    try:
-        outputs = await gemini_agent.generate_note(text, image_url, caption)
-        community_note = outputs.get("community_note", None)
-        chinese_note = community_note
-        if community_note is not None:
-            try:
-                chinese_note = await translate_text(community_note, language="cn")
-            except Exception as e:
-                print(f"Error in translation: {e}")
+    # try:
+    outputs = await openai_agent.generate_note(text, image_url, caption)
+    community_note = outputs.get("community_note", None)
+    chinese_note = community_note
+    if community_note is not None:
+        try:
+            chinese_note = await translate_text(community_note, language="cn")
+        except Exception as e:
+            print(f"Error in translation: {e}")
 
-        return AgentResponse(
-            requestId=request_id,
-            success=outputs.get("success", False),
-            en=community_note,
-            cn=chinese_note,
-            links=outputs.get("sources", None),
-            isControversial=outputs.get("isControversial", False),
-            isVideo=outputs.get("isVideo", False),
-            isAccessBlocked=outputs.get("isAccessBlocked", False),
-            report=outputs.get("report", None),
-            totalTimeTaken=outputs.get("total_time_taken", None),
-            agentTrace=outputs.get("agent_trace", None),
-        )
-    except Exception as e:
-        print(f"Error in generating community note: {e}")
-        return AgentResponse(
-            requestId=request_id,
-            success=False,
-            errorMessage=str(e),
-            agentTrace=(
-                outputs.get("agent_trace", None) if "outputs" in locals() else None
-            ),
-        )
+    return AgentResponse(
+        requestId=request_id,
+        success=outputs.get("success", False),
+        en=community_note,
+        cn=chinese_note,
+        links=outputs.get("sources", None),
+        isControversial=outputs.get("isControversial", False),
+        isVideo=outputs.get("isVideo", False),
+        isAccessBlocked=outputs.get("isAccessBlocked", False),
+        report=outputs.get("report", None),
+        totalTimeTaken=outputs.get("total_time_taken", None),
+        agentTrace=outputs.get("agent_trace", None),
+    )
+    # except Exception as e:
+    #     print(f"Error in generating community note: {e}")
+    #     return AgentResponse(
+    #         requestId=request_id,
+    #         success=False,
+    #         errorMessage=str(e),
+    #         agentTrace=(
+    #             outputs.get("agent_trace", None) if "outputs" in locals() else None
+    #         ),
+    #     )
 
 
 if __name__ == "__main__":

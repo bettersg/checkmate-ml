@@ -1,6 +1,13 @@
+from enum import Enum
 from typing import List, Optional
 from pydantic import BaseModel
 from pydantic.fields import Field
+
+
+class SupportedModelProvider(str, Enum):
+    GEMINI = "gemini"
+    OPENAI = "openai"
+    DEEPSEEK = "deepseek"
 
 
 class AgentResponse(BaseModel):
@@ -15,7 +22,7 @@ class AgentResponse(BaseModel):
     totalTimeTaken: float | None = None
     report: str | None = None
     errorMessage: str | None = None
-    agentTrace: List[str] | None = None
+    agentTrace: List[dict] | None = None
 
 
 class CommunityNoteRequest(BaseModel):
