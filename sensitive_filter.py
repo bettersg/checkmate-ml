@@ -35,11 +35,7 @@ ai_template = prompt["ai_template"]
 
 
 # Define LLM model
-llm = ChatOpenAI(
-    model="gpt-4o-mini",
-    temperature=0,
-    seed=11
-)
+llm = ChatOpenAI(model="gpt-4o-mini", temperature=0, seed=11)
 
 # Build prompt messages
 human_prompt_template = HumanMessagePromptTemplate.from_template(human_template)
@@ -48,10 +44,11 @@ messages = [SystemMessage(content=system_message)]
 
 for example in few_shot_examples:
     messages.append(human_prompt_template.format(message=example.get("message")))
-    messages.append(ai_prompt_template.format(
-        reasoning=example.get("reasoning"),
-        is_sensitive=example.get("is_sensitive")
-    ))
+    messages.append(
+        ai_prompt_template.format(
+            reasoning=example.get("reasoning"), is_sensitive=example.get("is_sensitive")
+        )
+    )
 
 messages.append(human_prompt_template)
 chat_prompt_template = ChatPromptTemplate.from_messages(messages)
@@ -59,6 +56,7 @@ parser = JsonOutputParser()
 
 # Combine into a chain
 chain = chat_prompt_template | llm | parser
+
 
 # Define function to check for sensitive content
 def check_is_sensitive(message):
