@@ -266,11 +266,11 @@ class GeminiAgent(FactCheckingAgentBaseClass):
                     )
                 )
                 response = self.client.models.generate_content(
-                    model="gemini-2.0-flash-thinking-exp",
+                    model="gemini-2.0-flash-exp",
                     contents=messages,
                     config=types.GenerateContentConfig(
                         tools=[self.function_tool],
-                        systemInstruction=system_prompt,
+                        system_instruction=system_prompt,
                         tool_config=tool_config,
                         temperature=0.4,
                     ),

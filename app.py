@@ -24,7 +24,7 @@ from langfuse.decorators import observe, langfuse_context
 import time
 
 langfuse_context.configure(
-    enabled=True
+    enabled=True,
     # enabled=os.getenv("ENVIRONMENT") != "development",
 )
 
@@ -151,6 +151,7 @@ async def get_community_note_api_handler(
         has_text=bool(request.text),
         has_image=bool(request.image_url),
     )
+    langfuse_context.update_current_trace(metadata={"request_id": request_id_var.get()})
     try:
         if request.text is None and request.image_url is None:
             raise HTTPException(

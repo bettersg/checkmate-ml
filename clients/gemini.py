@@ -4,7 +4,7 @@ from dotenv import load_dotenv
 import functools
 import time
 from logger import StructuredLogger
-from langfuse.decorators import observe
+from langfuse.decorators import observe, langfuse_context
 
 logger = StructuredLogger("gemini_client")
 
@@ -55,9 +55,26 @@ def retry_once_per_model(wait_time=2, fallback_models=None):
 # Initialize the gemini client
 gemini_client = genai.Client(api_key=os.environ.get("GOOGLE_API_KEY"))
 
-# Apply both decorators to `models.generate_content` with retry as outer decorator
+
+# Preserve a reference to the original method
+original_generate_content = gemini_client.models.generate_content
+
+
+# Define a custom function to override the observed output
+@observe(as_type="generation", capture_output=False)
+def generate_content_with_custom_observation(*args, **kwargs):
+    # Call the original method using the preserved reference
+    response = original_generate_content(*args, **kwargs)
+    # Update the current observation with custom input and output
+    print("MODEL DUMP")
+    print(response.model_dump())
+    langfuse_context.update_current_observation(output=response.candidates[0].content)
+    return response
+
+
+# Apply the retry decorator to the custom function
 gemini_client.models.generate_content = retry_once_per_model(wait_time=2)(
-    observe(as_type="generation")(gemini_client.models.generate_content)
+    generate_content_with_custom_observation
 )
 
 __all__ = ["gemini_client"]

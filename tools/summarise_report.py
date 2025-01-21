@@ -67,16 +67,17 @@ def summarise_report_factory(
         parts.append(types.Part.from_text(f"***Report***: {report}\n****End Report***"))
         messages = [types.Content(parts=parts, role="user")]
         try:
-            response = await gemini_client.models.generate_content(
+            response = gemini_client.models.generate_content(
                 model="gemini-2.0-flash-exp",
                 contents=messages,
                 config=types.GenerateContentConfig(
-                    systemInstruction=summary_prompt,
+                    system_instruction=summary_prompt,
                     response_mime_type="application/json",
                     response_schema=summary_response_schema,
                     temperature=0.2,
                 ),
             )
+
         except Exception as e:
             print(f"Error in generation: {e}")
             return {"error": str(e), "success": False}
@@ -118,11 +119,11 @@ async def summarise_report_nonfactory(
     parts.append(types.Part.from_text(f"***Report***: {report}\n****End Report***"))
     messages = [types.Content(parts=parts, role="user")]
     try:
-        response = await gemini_client.models.generate_content(
+        response = gemini_client.models.generate_content(
             model="gemini-2.0-flash-exp",
             contents=messages,
             config=types.GenerateContentConfig(
-                systemInstruction=summary_prompt,
+                system_instruction=summary_prompt,
                 response_mime_type="application/json",
                 response_schema=summary_response_schema,
                 temperature=0.2,

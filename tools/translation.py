@@ -34,7 +34,7 @@ async def translate_text(text: str, language: str = SupportedLanguage.CN.value):
             model="gemini-2.0-flash-exp",
             contents=[types.Part(text=text)],
             config=types.GenerateContentConfig(
-                systemInstruction=prompt,
+                system_instruction=prompt,
                 temperature=0.2,
             ),
         )
