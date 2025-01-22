@@ -3,7 +3,8 @@ from dotenv import load_dotenv
 load_dotenv()
 
 import joblib
-from fastapi import FastAPI, BackgroundTasks
+from fastapi import FastAPI, BackgroundTasks, Header
+from typing import Optional
 from pydantic import BaseModel, Field
 from sentence_transformers import SentenceTransformer
 
@@ -139,7 +140,6 @@ def get_redact(item: ItemText, background_tasks: BackgroundTasks):
 
 
 @app.post("/v2/getCommunityNote")
-@observe()
 async def get_community_note_api_handler(
     request: CommunityNoteRequest,
     background_tasks: BackgroundTasks,
@@ -172,6 +172,7 @@ async def get_community_note_api_handler(
                 caption=request.caption,
                 addPlanning=request.addPlanning,
                 provider=provider,
+                langfuse_observation_id=request_id_var.get(),  # set langfuse trace ID as request ID
             )
             cleanup(background_tasks, f"{provider.value} note generated successfully")
             return result
@@ -181,6 +182,7 @@ async def get_community_note_api_handler(
                 image_url=request.image_url,
                 caption=request.caption,
                 addPlanning=request.addPlanning,
+                langfuse_observation_id=request_id_var.get(),  # set langfuse trace ID as request ID
             )
             cleanup(background_tasks, "Gemini note generated successfully")
             return result

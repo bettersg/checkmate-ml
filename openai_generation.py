@@ -87,6 +87,7 @@ async def get_outputs(
     caption: Union[str, None] = None,
     addPlanning: bool = False,
     provider: SupportedModelProvider = SupportedModelProvider.OPENAI,
+    **kwargs,
 ):
     openai_client = create_openai_client(provider)
     if provider == SupportedModelProvider.OPENAI:

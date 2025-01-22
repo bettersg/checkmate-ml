@@ -86,6 +86,7 @@ async def get_outputs(
     image_url: Union[str, None] = None,
     caption: Union[str, None] = None,
     addPlanning: bool = False,
+    **kwargs,
 ):
     gemini_agent = GeminiAgent(
         gemini_client,
