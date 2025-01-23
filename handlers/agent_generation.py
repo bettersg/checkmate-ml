@@ -84,7 +84,7 @@ This is an automated message sent by the Singapore Government.
 logger = StructuredLogger("agent_generation")
 
 
-@observe(name="get_outputs_openai")
+@observe(name="=agent_generation")
 async def get_outputs(
     text: Union[str, None] = None,
     image_url: Union[str, None] = None,

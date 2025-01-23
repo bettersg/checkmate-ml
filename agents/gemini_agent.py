@@ -6,7 +6,7 @@ from google.genai import types
 from utils.gemini_utils import get_image_part, generate_image_parts, generate_text_parts
 import asyncio
 import time
-from tools import summarise_report_nonfactory
+from tools import summarise_report_factory
 import json
 from logger import StructuredLogger
 from langfuse.decorators import observe, langfuse_context
@@ -361,6 +361,9 @@ class GeminiAgent(FactCheckingAgentBaseClass):
         """
         child_logger = logger.child(text=text, image_url=image_url, caption=caption)
         child_logger.info("Generating community note")
+        summarise_report = summarise_report_factory(
+            input_text=text, input_image_url=image_url, input_caption=caption
+        )
         # if both text and image_url are provided, throw error:
         if text is not None and image_url is not None:
             child_logger.error("Both 'text' and 'image_url' cannot be provided")
@@ -383,11 +386,8 @@ class GeminiAgent(FactCheckingAgentBaseClass):
         time.sleep(3)
         if report_dict.get("success") and report_dict.get("report"):
             report_dict["agent_time_taken"] = duration
-            summary_results = await summarise_report_nonfactory(
+            summary_results = await summarise_report(
                 report=report_dict["report"],
-                input_text=text,
-                input_image_url=image_url,
-                input_caption=caption,
             )
             if summary_results.get("success"):
                 report_dict["community_note"] = summary_results["community_note"]

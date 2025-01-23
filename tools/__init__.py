@@ -4,7 +4,6 @@ from .review_report import review_report_tool, submit_report_for_review
 from .summarise_report import (
     summarise_report_factory,
     summarise_report_tool,
-    summarise_report_nonfactory,
 )
 from .search_google import search_google_tool, search_google
 from .translation import translation_tool, translate_text
@@ -23,7 +22,6 @@ __all__ = [
     "review_report_tool",
     "submit_report_for_review",
     "summarise_report_factory",
-    "summarise_report_nonfactory",
     "summarise_report_tool",
     "search_google_tool",
     "search_google",

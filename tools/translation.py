@@ -1,7 +1,7 @@
 from google.genai import types
 from langfuse.decorators import observe
 from clients.gemini import gemini_client
-import json
+from logger import StructuredLogger
 from enum import Enum
 
 
@@ -19,10 +19,13 @@ class SupportedLanguage(Enum):
 
 supported_languages = {SupportedLanguage.CN.value: "Simplified Chinese"}
 
+logger = StructuredLogger("translation")
+
 
 @observe(name="translate_text")
 async def translate_text(text: str, language: str = SupportedLanguage.CN.value):
     """Translates the given text to the specified language."""
+    child_logger = logger.child(text=text, language=language)
     if language not in SupportedLanguage._value2member_map_:
         raise ValueError(f"Unsupported language: {language}")
     try:
@@ -41,7 +44,7 @@ async def translate_text(text: str, language: str = SupportedLanguage.CN.value):
         translated_text = response.candidates[0].content.parts[0].text
         return translated_text
     except Exception as e:
-        print(f"Error in translation: {e}")
+        child_logger.error(f"Error in translation: {e}")
         return None
 
 

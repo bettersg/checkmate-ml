@@ -4,7 +4,7 @@ from typing import Union, List
 import json
 from logger import StructuredLogger
 import time
-from tools import summarise_report_nonfactory
+from tools import summarise_report_factory
 import asyncio
 from openai.types.chat import ChatCompletionMessageToolCall
 from langfuse.decorators import observe
@@ -362,6 +362,9 @@ class OpenAIAgent(FactCheckingAgentBaseClass):
             A dictionary representing the community note.
         """
         child_logger = logger.child(text=text, image_url=image_url, caption=caption)
+        summarise_report = summarise_report_factory(
+            input_text=text, input_image_url=image_url, input_caption=caption
+        )
         child_logger.info("Generating community note")
         # if both text and image_url are provided, throw error:
         if text is not None and image_url is not None:
@@ -395,11 +398,8 @@ class OpenAIAgent(FactCheckingAgentBaseClass):
         duration = time.time() - start_time  # Calculate duration
         report_dict["agent_time_taken"] = duration
         if report_dict.get("success") and report_dict.get("report"):
-            summary_results = await summarise_report_nonfactory(
+            summary_results = await summarise_report(
                 report=report_dict["report"],
-                input_text=text,
-                input_image_url=image_url,
-                input_caption=caption,
             )
             if summary_results.get("success"):
                 report_dict["community_note"] = summary_results["community_note"]

@@ -41,10 +41,3 @@ search_google_tool = {
     "function": search_google,
     "definition": search_function_definition,
 }
-
-
-# if __name__ == "__main__":
-#     import asyncio
-#     q = "checkmate sg"
-#     result = asyncio.run(search_google(q))
-#     print(result)
