@@ -66,8 +66,6 @@ def generate_content_with_custom_observation(*args, **kwargs):
     # Call the original method using the preserved reference
     response = original_generate_content(*args, **kwargs)
     # Update the current observation with custom input and output
-    print("MODEL DUMP")
-    print(response.model_dump())
     langfuse_context.update_current_observation(output=response.candidates[0].content)
     return response
 

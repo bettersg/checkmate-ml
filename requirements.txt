@@ -18,3 +18,4 @@ google-genai
 pytest
 pytest-asyncio
 responses
+google-cloud-firestore

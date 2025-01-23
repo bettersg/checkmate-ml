@@ -3,26 +3,24 @@ from dotenv import load_dotenv
 load_dotenv()
 
 import joblib
-from fastapi import FastAPI, BackgroundTasks, Header
-from typing import Optional
-from pydantic import BaseModel, Field
+from fastapi import FastAPI, BackgroundTasks
+from pydantic import BaseModel
 from sentence_transformers import SentenceTransformer
 
-# from ocr import end_to_end
-from ocr_v2 import perform_ocr
-from trivial_filter import check_should_review
+from handlers import (
+    perform_ocr,
+    check_should_review,
+    check_is_sensitive,
+    redact,
+    get_outputs,
+)
 from fastapi import HTTPException
-from sensitive_filter import check_is_sensitive
-from pii_mask import redact
 import json
-from gemini_generation import get_outputs
-from openai_generation import get_outputs as get_openai_outputs
 from models import CommunityNoteRequest, AgentResponse, SupportedModelProvider
 from middleware import RequestIDMiddleware  # Import the middleware
 from context import request_id_var  # Import the context variable
 from logger import StructuredLogger
 from langfuse.decorators import observe, langfuse_context
-import time
 
 langfuse_context.configure(
     enabled=True,
@@ -76,7 +74,9 @@ def get_L1_category(item: ItemText, background_tasks: BackgroundTasks):
 @app.post("/sensitivity-filter")
 def get_sensitivity(item: ItemText, background_tasks: BackgroundTasks):
     logger.info("Processing sensitivity filter request", text=item.text[:100])
-    is_sensitive = check_is_sensitive(item.text)
+    is_sensitive = check_is_sensitive(
+        item.text, langfuse_observation_id=request_id_var.get()
+    )
     result = {"is_sensitive": is_sensitive}
     cleanup(background_tasks, "Sensitivity check complete")
     return result
@@ -85,7 +85,9 @@ def get_sensitivity(item: ItemText, background_tasks: BackgroundTasks):
 @app.post("/getNeedsChecking")
 def get_needs_checking(item: ItemText, background_tasks: BackgroundTasks):
     logger.info("Processing needs checking request", text=item.text[:100])
-    should_review = check_should_review(item.text)
+    should_review = check_should_review(
+        item.text, langfuse_observation_id=request_id_var.get()
+    )
     result = {"needsChecking": should_review}
     cleanup(background_tasks, "Review check complete")
     return result
@@ -94,13 +96,15 @@ def get_needs_checking(item: ItemText, background_tasks: BackgroundTasks):
 @app.post("/ocr-v2")
 def get_ocr(item: ItemUrl, background_tasks: BackgroundTasks):
     logger.info("Processing OCR request", url=item.url)
-    results = perform_ocr(item.url)
+    results = perform_ocr(item.url, langfuse_observation_id=request_id_var.get())
     if "extracted_message" in results and results["extracted_message"]:
         extracted_message = results["extracted_message"]
-        logger.info("Message extracted from image", message=extracted_message[:100])
-        prediction = get_L1_category(ItemText(text=extracted_message)).get(
-            "prediction", "unsure"
+        logger.info(
+            "Message extracted from image", extracted_text=extracted_message[:100]
         )
+        prediction = get_L1_category(
+            ItemText(text=extracted_message), background_tasks
+        ).get("prediction", "unsure")
         results["prediction"] = prediction
     else:
         results["prediction"] = "unsure"
@@ -112,7 +116,10 @@ def get_ocr(item: ItemUrl, background_tasks: BackgroundTasks):
 def get_redact(item: ItemText, background_tasks: BackgroundTasks):
     logger.info("Processing redaction request", text=item.text[:100])
     try:
-        response, tokens_used = redact(item.text)
+        response, tokens_used = redact(
+            item.text, langfuse_observation_id=request_id_var.get()
+        )
+        # set langfuse trace ID as request ID
         response_dict = json.loads(response)
         redacted_message = item.text
         for redaction in response_dict["redacted"]:
@@ -132,7 +139,7 @@ def get_redact(item: ItemText, background_tasks: BackgroundTasks):
         result = {
             "redacted": "",
             "original": item.text,
-            "tokens_used": tokens_used,
+            "tokens_used": tokens_used or 0,
             "reasoning": "Error in redact function",
         }
         cleanup(background_tasks, "Redaction failed")
@@ -151,7 +158,6 @@ async def get_community_note_api_handler(
         has_text=bool(request.text),
         has_image=bool(request.image_url),
     )
-    langfuse_context.update_current_trace(metadata={"request_id": request_id_var.get()})
     try:
         if request.text is None and request.image_url is None:
             raise HTTPException(
@@ -162,35 +168,16 @@ async def get_community_note_api_handler(
                 status_code=400,
                 detail="Only one of 'text' or 'image_url' should be provided.",
             )
-        if (
-            provider == SupportedModelProvider.OPENAI
-            or provider == SupportedModelProvider.DEEPSEEK
-        ):
-            result = await get_openai_outputs(
-                text=request.text,
-                image_url=request.image_url,
-                caption=request.caption,
-                addPlanning=request.addPlanning,
-                provider=provider,
-                langfuse_observation_id=request_id_var.get(),  # set langfuse trace ID as request ID
-            )
-            cleanup(background_tasks, f"{provider.value} note generated successfully")
-            return result
-        elif provider == SupportedModelProvider.GEMINI:
-            result = await get_outputs(
-                text=request.text,
-                image_url=request.image_url,
-                caption=request.caption,
-                addPlanning=request.addPlanning,
-                langfuse_observation_id=request_id_var.get(),  # set langfuse trace ID as request ID
-            )
-            cleanup(background_tasks, "Gemini note generated successfully")
-            return result
-        else:
-            logger.error("Unsupported provider specified", provider=provider.value)
-            raise HTTPException(
-                status_code=400, detail=f"Unsupported model provider: {provider}"
-            )
+        result = await get_outputs(
+            text=request.text,
+            image_url=request.image_url,
+            caption=request.caption,
+            addPlanning=request.addPlanning,
+            provider=provider,
+            langfuse_observation_id=request_id_var.get(),  # set langfuse trace ID as request ID
+        )
+        cleanup(background_tasks, f"{provider.value} note generated successfully")
+        return result
 
     except HTTPException as e:
         logger.error(

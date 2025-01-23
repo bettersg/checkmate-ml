@@ -2,6 +2,7 @@ from enum import Enum
 from typing import List, Optional
 from pydantic import BaseModel
 from pydantic.fields import Field
+from datetime import datetime
 
 
 class SupportedModelProvider(str, Enum):
@@ -38,4 +39,23 @@ class CommunityNoteRequest(BaseModel):
     addPlanning: Optional[bool] = Field(
         default=False,
         description="Whether or not to include zero-shot planning step between each agent step",
+    )
+
+
+class SavedAgentCall(AgentResponse):
+    text: Optional[str] = Field(
+        default=None, description="Input text content for the agent call"
+    )
+    image_url: Optional[str] = Field(
+        default=None, description="Input image URL for the agent call"
+    )
+    caption: Optional[str] = Field(
+        default=None, description="Caption provided with the input"
+    )
+    timestamp: datetime = Field(description="Timestamp of when the call was made")
+    model: SupportedModelProvider = Field(
+        description="Model provider used for the call"
+    )
+    environment: str = Field(
+        default=None, description="Environment in which the call was made"
     )

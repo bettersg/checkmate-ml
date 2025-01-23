@@ -9,13 +9,17 @@ from tools import (
 )
 
 from agents.openai_agent import OpenAIAgent
+from agents.gemini_agent import GeminiAgent
+from clients.gemini import gemini_client
 from clients.openai import create_openai_client
 from datetime import datetime
 from typing import Union, List
-from models import AgentResponse, SupportedModelProvider
+from models import SavedAgentCall, SupportedModelProvider
 from context import request_id_var  # Import the context variable
 from logger import StructuredLogger
-from langfuse.decorators import observe
+from langfuse.decorators import observe, langfuse_context
+from clients.firestore_db import db
+import os
 
 system_prompt = """# Context
 
@@ -77,7 +81,7 @@ Characteristics of legitimate government communications:
 This is an automated message sent by the Singapore Government.
 ```End Govt SMS Format```"""
 
-child_logger = StructuredLogger("openai_generation")
+logger = StructuredLogger("agent_generation")
 
 
 @observe(name="get_outputs_openai")
@@ -89,41 +93,79 @@ async def get_outputs(
     provider: SupportedModelProvider = SupportedModelProvider.OPENAI,
     **kwargs,
 ):
-    openai_client = create_openai_client(provider)
-    if provider == SupportedModelProvider.OPENAI:
-        model = "gpt-4o"
-    elif provider == SupportedModelProvider.DEEPSEEK:
-        model = "deepseek-chat"
-
-    openai_agent = OpenAIAgent(
-        openai_client,
-        tool_list=[
-            search_google_tool,
-            get_screenshot_tool,
-            check_malicious_url_tool,
-            review_report_tool,
-            plan_next_step_tool,
-            infer_intent_tool,
-        ],
-        system_prompt=system_prompt.format(
-            datetime=datetime.now().strftime("%d %b %Y")
-        ),
-        include_planning_step=addPlanning,
-        temperature=0.2,
-        model=model,
+    langfuse_context.update_current_trace(
+        tags=[
+            os.environ.get("ENVIRONMENT", "missing"),
+            "agent_generation",
+            "community_note",
+        ]
     )
-    request_id = request_id_var.get()  # Access the request_id from context variable
+    child_logger = logger.child(
+        model=provider.value,
+        text=text,
+        image_url=image_url,
+        caption=caption,
+        addPlanning=addPlanning,
+    )
+    request_id = request_id_var.get()
+    model = None
+
     try:
-        outputs = await openai_agent.generate_note(text, image_url, caption)
+        current_datetime = datetime.now()
+        if provider == SupportedModelProvider.GEMINI:
+            model = "gemini"
+            agent = GeminiAgent(
+                gemini_client,
+                tool_list=[
+                    search_google_tool,
+                    get_screenshot_tool,
+                    check_malicious_url_tool,
+                    review_report_tool,
+                    plan_next_step_tool,
+                    infer_intent_tool,
+                ],
+                system_prompt=system_prompt.format(
+                    datetime=current_datetime.strftime("%d %b %Y")
+                ),
+                include_planning_step=addPlanning,
+                temperature=0.2,
+            )
+        else:
+            openai_client = create_openai_client(provider)
+            if provider == SupportedModelProvider.OPENAI:
+                model = "gpt-4o"
+            elif provider == SupportedModelProvider.DEEPSEEK:
+                model = "deepseek-chat"
+
+            agent = OpenAIAgent(
+                openai_client,
+                tool_list=[
+                    search_google_tool,
+                    get_screenshot_tool,
+                    check_malicious_url_tool,
+                    review_report_tool,
+                    plan_next_step_tool,
+                    infer_intent_tool,
+                ],
+                system_prompt=system_prompt.format(
+                    datetime=current_datetime.strftime("%d %b %Y")
+                ),
+                include_planning_step=addPlanning,
+                temperature=0.2,
+                model=model,
+            )
+
+        outputs = await agent.generate_note(text, image_url, caption)
         community_note = outputs.get("community_note", None)
         chinese_note = community_note
+
         if community_note is not None:
             try:
                 chinese_note = await translate_text(community_note, language="cn")
             except Exception as e:
                 child_logger.error(f"Error in translation: {e}")
 
-        return AgentResponse(
+        response = SavedAgentCall(
             requestId=request_id,
             success=outputs.get("success", False),
             en=community_note,
@@ -135,17 +177,40 @@ async def get_outputs(
             report=outputs.get("report", None),
             totalTimeTaken=outputs.get("total_time_taken", None),
             agentTrace=outputs.get("agent_trace", None),
+            text=text,
+            image_url=image_url,
+            caption=caption,
+            timestamp=current_datetime,
+            model=provider,
+            environment=os.environ.get("ENVIRONMENT", "missing"),
         )
+
     except Exception as e:
         child_logger.error(f"Error in generating community note: {e}")
-        return AgentResponse(
+        response = SavedAgentCall(
             requestId=request_id,
             success=False,
             errorMessage=str(e),
             agentTrace=(
                 outputs.get("agent_trace", None) if "outputs" in locals() else None
             ),
+            text=text,
+            image_url=image_url,
+            caption=caption,
+            timestamp=current_datetime,
+            model=provider,  # Fallback to provider value if model is None
+            environment=os.environ.get("ENVIRONMENT", "missing"),
         )
+
+    finally:
+        if response:
+            try:
+                doc_ref = db.collection("agent_calls").document(request_id)
+                doc_ref.set(response.model_dump())
+            except Exception as e:
+                child_logger.error(f"Error storing response in Firestore: {e}")
+
+        return response  # Always return response, even if it's an error response
 
 
 if __name__ == "__main__":
