@@ -1,11 +1,10 @@
-from langfuse.openai import openai
+from clients.openai import openai_client
 from langfuse.decorators import observe
 import json
 
 
 @observe()
 def helpfulness_eval(input_text, output):
-    print(input_text["text"], output.report)
     template_tone_eval = """
     Evaluate the helpfulness of the generation on a continuous scale from 0 to 1. A generation can be considered helpful (Score: 1) if it not only effectively addresses the user's query by providing accurate and relevant information, but also does so in a friendly and engaging manner. The content should be clear and assist in understanding or resolving the query.
 
@@ -26,7 +25,7 @@ def helpfulness_eval(input_text, output):
     """
 
     helpfulness_score = (
-        openai.chat.completions.create(
+        openai_client.chat.completions.create(
             messages=[
                 {
                     "role": "user",

@@ -1,7 +1,9 @@
 from google.genai import types
+from langfuse.decorators import observe
 from clients.gemini import gemini_client
-import json
+from logger import StructuredLogger
 from enum import Enum
+
 
 translation_system_prompt = """You are a professional translator specializing in English to {language} translations. Your task is to translate the user's text while ensuring:
 1. The translation captures the meaning and context of the original text accurately.
@@ -17,9 +19,13 @@ class SupportedLanguage(Enum):
 
 supported_languages = {SupportedLanguage.CN.value: "Simplified Chinese"}
 
+logger = StructuredLogger("translation")
 
+
+@observe(name="translate_text")
 async def translate_text(text: str, language: str = SupportedLanguage.CN.value):
     """Translates the given text to the specified language."""
+    child_logger = logger.child(text=text, language=language)
     if language not in SupportedLanguage._value2member_map_:
         raise ValueError(f"Unsupported language: {language}")
     try:
@@ -31,14 +37,14 @@ async def translate_text(text: str, language: str = SupportedLanguage.CN.value):
             model="gemini-2.0-flash-exp",
             contents=[types.Part(text=text)],
             config=types.GenerateContentConfig(
-                systemInstruction=prompt,
+                system_instruction=prompt,
                 temperature=0.2,
             ),
         )
         translated_text = response.candidates[0].content.parts[0].text
         return translated_text
     except Exception as e:
-        print(f"Error in translation: {e}")
+        child_logger.error(f"Error in translation: {e}")
         return None
 
 

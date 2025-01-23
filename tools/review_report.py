@@ -3,6 +3,7 @@
 from google.genai import types
 from collections import OrderedDict
 from clients.gemini import gemini_client
+from langfuse.decorators import observe
 import json
 
 system_prompt_review = """#Instructions
@@ -44,6 +45,7 @@ response_schema = {
 }
 
 
+@observe()
 async def submit_report_for_review(
     report, sources, isControversial, isVideo, isAccessBlocked
 ):
@@ -57,7 +59,7 @@ async def submit_report_for_review(
         model="gemini-2.0-flash-exp",
         contents=[types.Part(text=user_prompt)],
         config=types.GenerateContentConfig(
-            systemInstruction=system_prompt_review,
+            system_instruction=system_prompt_review,
             response_mime_type="application/json",
             response_schema=response_schema,
             temperature=0.5,

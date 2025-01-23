@@ -3,8 +3,10 @@
 import os
 import requests
 import time
+from langfuse.decorators import observe
 
 
+@observe()
 async def check_malicious_url(url):
     hostname = os.environ.get("RMSE_HOSTNAME")
 

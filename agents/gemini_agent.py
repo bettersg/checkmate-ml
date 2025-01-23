@@ -9,6 +9,7 @@ import time
 from tools import summarise_report_factory
 import json
 from logger import StructuredLogger
+from langfuse.decorators import observe, langfuse_context
 
 logger = StructuredLogger("gemini_agent")
 
@@ -222,6 +223,7 @@ class GeminiAgent(FactCheckingAgentBaseClass):
                 },
             )
 
+    @observe(name="generate_report_agent_gemini")
     async def generate_report(self, starting_parts):
         """Generates a report based on the provided starting parts.
         args:
@@ -264,11 +266,11 @@ class GeminiAgent(FactCheckingAgentBaseClass):
                     )
                 )
                 response = self.client.models.generate_content(
-                    model="gemini-2.0-flash-thinking-exp",
+                    model="gemini-2.0-flash-exp",
                     contents=messages,
                     config=types.GenerateContentConfig(
                         tools=[self.function_tool],
-                        systemInstruction=system_prompt,
+                        system_instruction=system_prompt,
                         tool_config=tool_config,
                         temperature=0.4,
                     ),
@@ -339,6 +341,7 @@ class GeminiAgent(FactCheckingAgentBaseClass):
                 "success": False,
             }
 
+    @observe(name="generate_note_gemini")
     async def generate_note(
         self,
         text: Union[str, None] = None,
@@ -358,6 +361,9 @@ class GeminiAgent(FactCheckingAgentBaseClass):
         """
         child_logger = logger.child(text=text, image_url=image_url, caption=caption)
         child_logger.info("Generating community note")
+        summarise_report = summarise_report_factory(
+            input_text=text, input_image_url=image_url, input_caption=caption
+        )
         # if both text and image_url are provided, throw error:
         if text is not None and image_url is not None:
             child_logger.error("Both 'text' and 'image_url' cannot be provided")
@@ -366,16 +372,7 @@ class GeminiAgent(FactCheckingAgentBaseClass):
                 "error": "Both 'text' and 'image_url' cannot be provided",
             }
         start_time = time.time()  # Start the timer
-        summarise_report = summarise_report_factory(
-            text, image_url, caption
-        )  # Creates a function that takes in a report and summarises it.
         cost_tracker = {"total_cost": 0, "cost_trace": []}  # To store the cost details
-        if "summarise_report" in self.function_dict:
-            if self.function_dict["summarise_report"] is not None:
-                logger.warning(
-                    "Unexpected: summary function already inside function_dict"
-                )
-            self.function_dict["summarise_report"] = summarise_report
         if text is not None:
             parts = generate_text_parts(text)
 
@@ -389,7 +386,9 @@ class GeminiAgent(FactCheckingAgentBaseClass):
         time.sleep(3)
         if report_dict.get("success") and report_dict.get("report"):
             report_dict["agent_time_taken"] = duration
-            summary_results = await summarise_report(report_dict["report"])
+            summary_results = await summarise_report(
+                report=report_dict["report"],
+            )
             if summary_results.get("success"):
                 report_dict["community_note"] = summary_results["community_note"]
             else:

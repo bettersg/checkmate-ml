@@ -1,4 +1,4 @@
-from openai import OpenAI
+from langfuse.openai import OpenAI
 import os
 from logger import StructuredLogger
 from models import SupportedModelProvider
@@ -15,7 +15,8 @@ def create_openai_client(provider=SupportedModelProvider.OPENAI):
         base_url = os.getenv("DEEPSEEK_BASE_URL")
     else:
         raise ValueError(f"Unsupported model provider: {provider}")
-    return OpenAI(api_key=api_key, base_url=base_url)
+    client = OpenAI(api_key=api_key, base_url=base_url)
+    return client
 
 
 # Default client for backward compatibility

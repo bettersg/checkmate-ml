@@ -7,6 +7,7 @@ import time
 from tools import summarise_report_factory
 import asyncio
 from openai.types.chat import ChatCompletionMessageToolCall
+from langfuse.decorators import observe
 
 logger = StructuredLogger("openai_agent")
 
@@ -257,6 +258,7 @@ class OpenAIAgent(FactCheckingAgentBaseClass):
                 tool_call_id,
             )
 
+    @observe(name="generate_report_agent_openai_style")
     async def generate_report(self, starting_content) -> dict:
         """Generates a report based on the provided starting parts.
         args:
@@ -341,6 +343,7 @@ class OpenAIAgent(FactCheckingAgentBaseClass):
                 "success": False,
             }
 
+    @observe(name="generate_note_openai_style")
     async def generate_note(
         self,
         text: Union[str, None] = None,
@@ -359,6 +362,9 @@ class OpenAIAgent(FactCheckingAgentBaseClass):
             A dictionary representing the community note.
         """
         child_logger = logger.child(text=text, image_url=image_url, caption=caption)
+        summarise_report = summarise_report_factory(
+            input_text=text, input_image_url=image_url, input_caption=caption
+        )
         child_logger.info("Generating community note")
         # if both text and image_url are provided, throw error:
         if text is not None and image_url is not None:
@@ -368,16 +374,7 @@ class OpenAIAgent(FactCheckingAgentBaseClass):
                 "error": "Both 'text' and 'image_url' cannot be provided",
             }
         start_time = time.time()  # Start the timer
-        summarise_report = summarise_report_factory(
-            text, image_url, caption
-        )  # Creates a function that takes in a report and summarises it.
         cost_tracker = {"total_cost": 0, "cost_trace": []}  # To store the cost details
-        if "summarise_report" in self.function_dict:
-            if self.function_dict["summarise_report"] is not None:
-                logger.warning(
-                    "Unexpected: summary function already inside function_dict"
-                )
-            self.function_dict["summarise_report"] = summarise_report
 
         if text is not None:
             content = [
@@ -401,7 +398,9 @@ class OpenAIAgent(FactCheckingAgentBaseClass):
         duration = time.time() - start_time  # Calculate duration
         report_dict["agent_time_taken"] = duration
         if report_dict.get("success") and report_dict.get("report"):
-            summary_results = await summarise_report(report_dict["report"])
+            summary_results = await summarise_report(
+                report=report_dict["report"],
+            )
             if summary_results.get("success"):
                 report_dict["community_note"] = summary_results["community_note"]
             else:

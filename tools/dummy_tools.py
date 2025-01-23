@@ -1,8 +1,10 @@
 # tools/dummy_tools.py
 # Tools that simply reflect the inputs back to the agent
 from collections import OrderedDict
+from langfuse.decorators import observe
 
 
+@observe()
 async def plan_next_step(reasoning, next_step):
     return {"result": {"reasoning": reasoning, "next_step": next_step}}
 
@@ -40,6 +42,7 @@ plan_next_step_definition = dict(
 )
 
 
+@observe()
 async def infer_intent(reasoning, intent):
     return {"result": {"reasoning": reasoning, "intent": intent}}
 

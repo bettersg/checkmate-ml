@@ -1,7 +1,10 @@
 from .website_screenshot import get_screenshot_tool, get_website_screenshot
 from .rmse_scanner import check_malicious_url_tool, check_malicious_url
 from .review_report import review_report_tool, submit_report_for_review
-from .summarise_report import summarise_report_factory, summarise_report_tool
+from .summarise_report import (
+    summarise_report_factory,
+    summarise_report_tool,
+)
 from .search_google import search_google_tool, search_google
 from .translation import translation_tool, translate_text
 from .dummy_tools import (
