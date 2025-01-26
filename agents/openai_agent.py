@@ -412,5 +412,5 @@ class OpenAIAgent(FactCheckingAgentBaseClass):
             child_logger.info("Community note generated successfully")
             return report_dict
         else:
-            child_logger.warn("Community report not generatd")
+            child_logger.warn("Community report not generated")
             return report_dict

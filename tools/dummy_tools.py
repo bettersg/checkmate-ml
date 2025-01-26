@@ -43,8 +43,8 @@ plan_next_step_definition = dict(
 
 
 @observe()
-async def infer_intent(reasoning, intent):
-    return {"result": {"reasoning": reasoning, "intent": intent}}
+async def infer_intent(articulation, intent):
+    return {"result": {"reasoning": articulation, "intent": intent}}
 
 
 infer_intent_definition = dict(
@@ -55,10 +55,10 @@ infer_intent_definition = dict(
         "properties": OrderedDict(
             [
                 (
-                    "reasoning",
+                    "articulation",
                     {
                         "type": "STRING",
-                        "description": "The reasoning behind your choice",
+                        "description": "Articulate the reasoning behind your choice",
                     },
                 ),
                 (
@@ -71,7 +71,7 @@ infer_intent_definition = dict(
                 ),
             ]
         ),
-        "required": ["reasoning", "intent"],
+        "required": ["articulation", "intent"],
     },
 )
 

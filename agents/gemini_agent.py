@@ -272,7 +272,7 @@ class GeminiAgent(FactCheckingAgentBaseClass):
                         tools=[self.function_tool],
                         system_instruction=system_prompt,
                         tool_config=tool_config,
-                        temperature=0.4,
+                        temperature=0.0,
                     ),
                 )
                 function_call_promises = []
@@ -400,5 +400,5 @@ class GeminiAgent(FactCheckingAgentBaseClass):
             child_logger.info("Community note generated successfully")
             return report_dict
         else:
-            child_logger.warn("Community report not generatd")
+            child_logger.warn("Community report not generated")
             return report_dict
