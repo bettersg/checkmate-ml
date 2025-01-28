@@ -5,8 +5,8 @@ from langfuse.decorators import observe
 
 
 @observe()
-async def plan_next_step(reasoning, next_step):
-    return {"result": {"reasoning": reasoning, "next_step": next_step}}
+async def plan_next_step(articulation, next_step):
+    return {"result": {"reasoning": articulation, "next_step": next_step}}
 
 
 plan_next_step_definition = dict(
@@ -17,10 +17,10 @@ plan_next_step_definition = dict(
         "properties": OrderedDict(
             [
                 (
-                    "reasoning",
+                    "articulation",
                     {
                         "type": "STRING",
-                        "description": "Why you think the next step should be what it is.",
+                        "description": "Articulate the reasoning why you think the next step should be what it is.",
                     },
                 ),
                 (
@@ -37,7 +37,7 @@ plan_next_step_definition = dict(
                 ),
             ]
         ),
-        "required": ["reasoning", "next_step"],
+        "required": ["articulation", "next_step"],
     },
 )
 
