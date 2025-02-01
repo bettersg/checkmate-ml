@@ -374,6 +374,7 @@ class GeminiAgent(FactCheckingAgentBaseClass):
         start_time = time.time()  # Start the timer
         cost_tracker = {"total_cost": 0, "cost_trace": []}  # To store the cost details
         if text is not None:
+            child_logger.info(f"Generating text parts for text: {text}")
             parts = generate_text_parts(text)
 
         elif image_url is not None:
