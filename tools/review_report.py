@@ -5,22 +5,12 @@ from collections import OrderedDict
 from clients.gemini import gemini_client
 from langfuse.decorators import observe
 import json
+from langfuse import Langfuse
 
-system_prompt_review = """#Instructions
+langfuse = Langfuse()
 
-You are playing the role of an editor for a credibility/fact-checking service.
-
-You will be provided with a report is written for the public, on a piece of information that has been submitted.
-
-Your role is to review the submission for:
-
-- clarity
-- presence of logical errors or inconsistencies
-- credibility of sources used
-
-Points to note:
-- Do not nitpick, work on the assumption that the drafter is competent
-- You have no ability to do your own research. Do not attempt to use your own knowledge, assume that the facts within the note are correct."""
+# get system_prompt_review from langfuse
+system_prompt_review = langfuse.get_prompt("system_prompt_review", label="production").prompt
 
 response_schema = {
     "type": "OBJECT",

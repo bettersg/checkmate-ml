@@ -1,17 +1,11 @@
 from google.genai import types
-from langfuse.decorators import observe
+from langfuse.decorators import observe, langfuse_context
 from clients.gemini import gemini_client
 from logger import StructuredLogger
 from enum import Enum
+from langfuse import Langfuse
 
-
-translation_system_prompt = """You are a professional translator specializing in English to {language} translations. Your task is to translate the user's text while ensuring:
-1. The translation captures the meaning and context of the original text accurately.
-2. The tone and style remain consistent with the original message.
-3. Avoid direct transliteration where it might make the text awkward or unclear in {language}.
-The output should only be the translated text, and should be fluent and grammatically correct.
-"""
-
+langfuse = Langfuse()
 
 class SupportedLanguage(Enum):
     CN = "cn"
@@ -30,9 +24,13 @@ async def translate_text(text: str, language: str = SupportedLanguage.CN.value):
         raise ValueError(f"Unsupported language: {language}")
     try:
         language_enum = SupportedLanguage(language)
-        prompt = translation_system_prompt.format(
-            language=supported_languages.get(language_enum.value, "Simplified Chinese")
+        language = supported_languages.get(language_enum.value, "Simplified Chinese")
+        # get summary_prompt from langfuse
+        translation_system_prompt = langfuse.get_prompt("translation_system_prompt", label="production")
+        langfuse_context.update_current_observation(
+            prompt=translation_system_prompt,
         )
+        prompt = translation_system_prompt.compile(language=language)
         response = gemini_client.models.generate_content(
             model="gemini-2.0-flash-exp",
             contents=[types.Part(text=text)],
