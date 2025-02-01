@@ -176,7 +176,7 @@ async def get_community_note_api_handler(
             provider=provider,
             langfuse_observation_id=request_id_var.get(),  # set langfuse trace ID as request ID
         )
-        cleanup(background_tasks, f"{provider.value} note generated successfully")
+        cleanup(background_tasks, f"/getCommunityNote complete")
         return result
 
     except HTTPException as e:
