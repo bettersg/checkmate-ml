@@ -1,9 +1,8 @@
 from google.genai import types
 import os
 from clients.openai import create_openai_client
-from typing import Union, List
-from utils.gemini_utils import generate_image_parts, generate_text_parts
-from langfuse.decorators import observe, langfuse_context
+from typing import Union
+from langfuse.decorators import observe
 import json
 from logger import StructuredLogger
 from langfuse import Langfuse
@@ -110,7 +109,7 @@ summarise_report_definition = dict(
                 "description": "The long-form report to summarise.",
             },
         },
-        "required": ["reasoning", "intent"],
+        "required": ["report"],
     },
 )
 

@@ -61,7 +61,7 @@ translation_definition = dict(
                 "description": "The language to translate to. Can only be 'cn' for Simplified Chinese for now.",
             },
         },
-        "required": ["reasoning", "intent"],
+        "required": ["text", "language"],
     },
 )
 
