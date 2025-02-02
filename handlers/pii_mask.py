@@ -11,6 +11,7 @@ langfuse = Langfuse()
 logger = StructuredLogger("pii_masking")
 
 
+##TODO move langfuse to new project
 @observe(name="PII Masking")
 def redact(text, **kwargs):
     """

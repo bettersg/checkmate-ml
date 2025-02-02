@@ -1,11 +1,14 @@
 from google.genai import types
 from langfuse.decorators import observe, langfuse_context
-from clients.gemini import gemini_client
+from clients.openai import create_openai_client
 from logger import StructuredLogger
 from enum import Enum
 from langfuse import Langfuse
+import os
 
+client = create_openai_client("deepseek")
 langfuse = Langfuse()
+
 
 class SupportedLanguage(Enum):
     CN = "cn"
@@ -26,20 +29,16 @@ async def translate_text(text: str, language: str = SupportedLanguage.CN.value):
         language_enum = SupportedLanguage(language)
         language = supported_languages.get(language_enum.value, "Simplified Chinese")
         # get summary_prompt from langfuse
-        translation_system_prompt = langfuse.get_prompt("translation_system_prompt", label="production")
-        langfuse_context.update_current_observation(
-            prompt=translation_system_prompt,
+        prompt = langfuse.get_prompt("translation", label=os.getenv("ENVIRONMENT"))
+        messages = prompt.compile(language=language, text=text)
+        config = prompt.config
+        response = client.chat.completions.create(
+            model=config.get("model", "deepseek-chat"),
+            temperature=config.get("temperature", 0.0),
+            messages=messages,
+            langfuse_prompt=prompt,
         )
-        prompt = translation_system_prompt.compile(language=language)
-        response = gemini_client.models.generate_content(
-            model="gemini-2.0-flash-exp",
-            contents=[types.Part(text=text)],
-            config=types.GenerateContentConfig(
-                system_instruction=prompt,
-                temperature=0.2,
-            ),
-        )
-        translated_text = response.candidates[0].content.parts[0].text
+        translated_text = response.choices[0].message.content
         return translated_text
     except Exception as e:
         child_logger.error(f"Error in translation: {e}")

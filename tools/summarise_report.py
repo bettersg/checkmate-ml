@@ -1,6 +1,6 @@
 from google.genai import types
-
-from clients.gemini import gemini_client
+import os
+from clients.openai import create_openai_client
 from typing import Union, List
 from utils.gemini_utils import generate_image_parts, generate_text_parts
 from langfuse.decorators import observe, langfuse_context
@@ -9,24 +9,9 @@ from logger import StructuredLogger
 from langfuse import Langfuse
 
 langfuse = Langfuse()
-
-# get summary_prompt from langfuse
-summary_prompt = langfuse.get_prompt("summary_prompt", label="production").prompt
-
-# get summary_response_description from langfuse
-summary_response_description_prompt = langfuse.get_prompt("summary_response_description_prompt", label="production").prompt
-
-summary_response_schema = {
-    "type": "OBJECT",
-    "properties": {
-        "community_note": {
-            "type": "STRING",
-            "description": summary_response_description_prompt,
-        }
-    },
-}
-
+client = create_openai_client("openai")
 logger = StructuredLogger("summarise_report")
+
 
 def summarise_report_factory(
     input_text: Union[str, None] = None,
@@ -47,29 +32,56 @@ def summarise_report_factory(
             raise ValueError(
                 "Only one of input_text or input_image_url should be provided"
             )
+        prompt = langfuse.get_prompt("summarise_report", label=os.getenv("ENVIRONMENT"))
+        messages = prompt.compile()
+        config = prompt.config
         if input_text:
-            parts = generate_text_parts(input_text)
+            content = [
+                {
+                    "type": "text",
+                    "text": f"User sent in: {input_text}",
+                },
+            ]
         elif input_image_url:
-            parts = generate_image_parts(input_image_url, input_caption)
-        parts.append(types.Part.from_text(f"***Report***: {report}\n****End Report***"))
-        messages = [types.Content(parts=parts, role="user")]
+            caption_suffix = (
+                "no caption"
+                if input_caption is None
+                else f"this caption: {input_caption}"
+            )
+            content = [
+                {
+                    "type": "text",
+                    "text": f"User sent in the following image with {caption_suffix}",
+                },
+                {"type": "image_url", "image_url": {"url": input_image_url}},
+            ]
+        content.append(
+            {
+                "type": "text",
+                "text": f"***Report***: {report}\n****End Report***",
+            }
+        )
+        messages.append(
+            {
+                "role": "user",
+                "content": content,
+            }
+        )
         try:
-            response = gemini_client.models.generate_content(
-                model="gemini-2.0-flash-exp",
-                contents=messages,
-                config=types.GenerateContentConfig(
-                    system_instruction=summary_prompt,
-                    response_mime_type="application/json",
-                    response_schema=summary_response_schema,
-                    temperature=0.2,
-                ),
+            response = client.chat.completions.create(
+                model=config.get("model", "gpt-4o"),
+                messages=messages,
+                temperature=config.get("temperature", 0),
+                seed=config.get("seed", 11),
+                response_format=config["response_format"],
+                langfuse_prompt=prompt,
             )
 
         except Exception as e:
             child_logger.error(f"Error in generation")
             return {"error": str(e), "success": False}
         try:
-            response_json = json.loads(response.candidates[0].content.parts[0].text)
+            response_json = json.loads(response.choices[0].message.content)
         except Exception as e:
             child_logger.error(f"Cannot parse response")
             return {"success": False, "error": str(e)}

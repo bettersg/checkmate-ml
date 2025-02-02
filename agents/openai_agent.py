@@ -8,6 +8,7 @@ from tools import summarise_report_factory
 import asyncio
 from openai.types.chat import ChatCompletionMessageToolCall
 from langfuse.decorators import observe
+import copy
 
 logger = StructuredLogger("openai_agent")
 
@@ -72,12 +73,16 @@ class OpenAIAgent(FactCheckingAgentBaseClass):
                 for item in obj:
                     convert_types_to_lowercase(item)
 
-        function_definition_dict["parameters"]["additionalProperties"] = False
-        convert_types_to_lowercase(function_definition_dict["parameters"])
-        function_definition_dict["strict"] = True
+        copied_definition = copy.deepcopy(
+            function_definition_dict
+        )  # otherwise it will alter the original definition and affect other agents
+
+        copied_definition["parameters"]["additionalProperties"] = False
+        convert_types_to_lowercase(copied_definition["parameters"])
+        copied_definition["strict"] = True
         return {
             "type": "function",
-            "function": function_definition_dict,
+            "function": copied_definition,
         }
 
     @staticmethod
