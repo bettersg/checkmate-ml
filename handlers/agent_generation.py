@@ -7,6 +7,7 @@ from tools import (
     infer_intent_tool,
     translate_text,
 )
+import json
 
 from agents.openai_agent import OpenAIAgent
 from agents.gemini_agent import GeminiAgent
@@ -125,9 +126,6 @@ async def get_outputs(
                     plan_next_step_tool,
                     infer_intent_tool,
                 ],
-                system_prompt=system_prompt.format(
-                    datetime=current_datetime.strftime("%d %b %Y")
-                ),
                 include_planning_step=addPlanning,
                 temperature=0.2,
             )
@@ -148,9 +146,6 @@ async def get_outputs(
                     plan_next_step_tool,
                     infer_intent_tool,
                 ],
-                system_prompt=system_prompt.format(
-                    datetime=current_datetime.strftime("%d %b %Y")
-                ),
                 include_planning_step=addPlanning,
                 temperature=0.2,
                 model=model,

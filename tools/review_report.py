@@ -2,70 +2,40 @@
 
 from google.genai import types
 from collections import OrderedDict
-from clients.gemini import gemini_client
+from clients.openai import create_openai_client
 from langfuse.decorators import observe
 import json
+from langfuse import Langfuse
+import os
 
-system_prompt_review = """#Instructions
+langfuse = Langfuse()
 
-You are playing the role of an editor for a credibility/fact-checking service.
-
-You will be provided with a report is written for the public, on a piece of information that has been submitted.
-
-Your role is to review the submission for:
-
-- clarity
-- presence of logical errors or inconsistencies
-- credibility of sources used
-
-Points to note:
-- Do not nitpick, work on the assumption that the drafter is competent
-- You have no ability to do your own research. Do not attempt to use your own knowledge, assume that the facts within the note are correct."""
-
-response_schema = {
-    "type": "OBJECT",
-    "properties": OrderedDict(
-        [
-            (
-                "feedback",
-                {
-                    "type": "STRING",
-                    "description": "Your feedback on the report, if any",
-                },
-            ),
-            (
-                "passedReview",
-                {
-                    "type": "BOOLEAN",
-                    "description": "A boolean indicating whether the item passed the review",
-                },
-            ),
-        ]
-    ),
-}
+# get system_prompt_review from langfuse
+client = create_openai_client("openai")
 
 
 @observe()
 async def submit_report_for_review(
     report, sources, isControversial, isVideo, isAccessBlocked
 ):
+    prompt = langfuse.get_prompt("review_report", label=os.getenv("ENVIRONMENT"))
+    config = prompt.config
+
     formatted_sources = "\n- ".join(sources) if sources else "<None>"
     if sources:
         formatted_sources = (
             "- " + formatted_sources
         )  # Add the initial '- ' if sources are present
-    user_prompt = f"Report: {report}\n*****\nSources:{formatted_sources}"
-    response = gemini_client.models.generate_content(
-        model="gemini-2.0-flash-exp",
-        contents=[types.Part(text=user_prompt)],
-        config=types.GenerateContentConfig(
-            system_instruction=system_prompt_review,
-            response_mime_type="application/json",
-            response_schema=response_schema,
-            temperature=0.5,
-        ),
+    messages = prompt.compile(report=report, formatted_sources=formatted_sources)
+    response = client.chat.completions.create(
+        model=config.get("model", "o3-mini"),
+        reasoning_effort=config.get("reasoning_effort", "medium"),
+        messages=messages,
+        response_format=config["response_format"],
+        langfuse_prompt=prompt,
     )
-    return {"result": json.loads(response.candidates[0].content.parts[0].text)}
+    result = json.loads(response.choices[0].message.content)
+    return {"result": result}
 
 
 review_report_definition = dict(

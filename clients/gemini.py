@@ -67,6 +67,11 @@ def generate_content_with_custom_observation(*args, **kwargs):
     response = original_generate_content(*args, **kwargs)
     # Update the current observation with custom input and output
     langfuse_context.update_current_observation(output=response.candidates[0].content)
+    if kwargs.get("langfuse_prompt"):
+        langfuse_context.update_current_observation(
+            prompt=kwargs.get("langfuse_prompt"),
+        )
+
     return response
 
 

@@ -1,21 +1,21 @@
-from langfuse.decorators import observe, langfuse_context
 import json
 import os
-from context import request_id_var  # Import the context variable
+from langfuse.decorators import observe, langfuse_context
 from clients.firestore_db import db
 from langfuse import Langfuse
 from logger import StructuredLogger
 from clients.openai import create_openai_client
+from context import request_id_var  # Import the context variable
 
 # Initialize ChatOpenAI and Langfuse
 client = create_openai_client("openai")
 langfuse = Langfuse()
 
-logger = StructuredLogger("trivial_filter")
+logger = StructuredLogger("sensitivity_filter")
 
 
-@observe(name="trivial_filter")
-def check_should_review(message, **kwargs):
+@observe(name="sensitivity_filter")
+def check_is_sensitive(message, **kwargs):
     """
     Checks if a message should be reviewed.
     """
@@ -23,20 +23,22 @@ def check_should_review(message, **kwargs):
     langfuse_context.update_current_trace(
         tags=[
             os.getenv("ENVIRONMENT", "missing_environment"),
-            "trivial_filter",
+            "sensitivity_filter",
             "single_call",
         ]
     )
     request_id = request_id_var.get()
-    doc_ref = db.collection("trivial_filters").document(request_id)
+    doc_ref = db.collection("sensitivity_filter").document(request_id)
 
     try:
-        prompt = langfuse.get_prompt("trivial_filter", label=os.getenv("ENVIRONMENT"))
+        prompt = langfuse.get_prompt(
+            "sensitivity_filter", label=os.getenv("ENVIRONMENT")
+        )
         compiled_prompt = prompt.compile(message=message)
         config = prompt.config
 
         response = client.chat.completions.create(
-            model=config.get("model", "gpt-4o"),
+            model=config.get("model", "gpt-4o-mini"),
             messages=compiled_prompt,
             temperature=config.get("temperature", 0),
             seed=config.get("seed", 11),
@@ -46,7 +48,7 @@ def check_should_review(message, **kwargs):
 
         json_output = json.loads(response.choices[0].message.content)
 
-        result = json_output.get("needs_checking", True)
+        result = json_output.get("is_sensitive", True)
 
         # Attempt to store in Firestore, but don't block on failure
         try:
