@@ -108,6 +108,7 @@ async def get_outputs(
         caption=caption,
         addPlanning=addPlanning,
     )
+    child_logger.info("Entered agent_generation function")
     request_id = request_id_var.get()
     model = None
 
