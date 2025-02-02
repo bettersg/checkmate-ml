@@ -1,5 +1,3 @@
-import json
-from collections import OrderedDict
 from langfuse import Langfuse
 
 # get system_prompt_review from langfuse
@@ -67,4 +65,5 @@ if __name__ == "__main__":
         labels=["production", "development", "uat"],  # directly promote to production
         config=config,  # optionally, add configs (e.g. model parameters or model tools) or tags
     )
+    langfuse.get_prompt("review_report", label="production")
     print("Prompt created successfully.")

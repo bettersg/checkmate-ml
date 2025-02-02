@@ -10,8 +10,11 @@ from tools import summarise_report_factory
 import json
 from logger import StructuredLogger
 from langfuse.decorators import observe, langfuse_context
+from langfuse import Langfuse
+from datetime import datetime
 
 logger = StructuredLogger("gemini_agent")
+langfuse = Langfuse()
 
 
 class GeminiAgent(FactCheckingAgentBaseClass):
@@ -20,7 +23,6 @@ class GeminiAgent(FactCheckingAgentBaseClass):
         self,
         client,
         tool_list: list,
-        system_prompt: str,
         include_planning_step: bool = True,
         temperature: float = 0.2,
         max_searches: int = 5,
@@ -39,7 +41,7 @@ class GeminiAgent(FactCheckingAgentBaseClass):
                 for tool in tool_list
                 if tool["function"].__name__ != "plan_next_step"
             ]
-        super().__init__(client, tool_list, system_prompt, temperature)
+        super().__init__(client, tool_list, temperature)
         self.function_tool = types.Tool(function_declarations=self.function_definitions)
         self.search_count = 0
         self.screenshot_count = 0
@@ -231,14 +233,19 @@ class GeminiAgent(FactCheckingAgentBaseClass):
         returns:
             A dictionary representing the report.
         """
+
         logger.info("Generating report")
         messages = [types.Content(parts=starting_parts, role="user")]
         completed = False
         think = True
         first_step = True
+        prompt = await self.get_system_prompt()
+        langfuse_context.update_current_observation(prompt=prompt)
+        current_datetime = datetime.now()
         try:
             while len(messages) < 50 and not completed:
-                system_prompt = self.system_prompt.format(
+                system_prompt = prompt.compile(
+                    datetime=current_datetime.strftime("%d %b %Y"),
                     remaining_searches=self.remaining_searches,
                     remaining_screenshots=self.remaining_screenshots,
                 )

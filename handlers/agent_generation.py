@@ -126,9 +126,6 @@ async def get_outputs(
                     plan_next_step_tool,
                     infer_intent_tool,
                 ],
-                system_prompt=system_prompt.format(
-                    datetime=current_datetime.strftime("%d %b %Y")
-                ),
                 include_planning_step=addPlanning,
                 temperature=0.2,
             )
@@ -149,9 +146,6 @@ async def get_outputs(
                     plan_next_step_tool,
                     infer_intent_tool,
                 ],
-                system_prompt=system_prompt.format(
-                    datetime=current_datetime.strftime("%d %b %Y")
-                ),
                 include_planning_step=addPlanning,
                 temperature=0.2,
                 model=model,

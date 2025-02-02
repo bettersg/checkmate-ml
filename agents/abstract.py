@@ -1,13 +1,17 @@
 # /agents/abstract.py
 from abc import ABC, abstractmethod
 from typing import Union
-from google.genai import types
+import os
+from langfuse import Langfuse
 
 
 class FactCheckingAgentBaseClass(ABC):
 
     def __init__(
-        self, client, tool_list: list, system_prompt: str, temperature: float = 0.0
+        self,
+        client,
+        tool_list: list,
+        temperature: float = 0.0,
     ):
         """Initializes the FactCheckingAgentBaseClass with a list of tools.
 
@@ -20,8 +24,8 @@ class FactCheckingAgentBaseClass(ABC):
         self.function_dict = {
             tool["definition"]["name"]: tool["function"] for tool in tool_list
         }
-        self.system_prompt = system_prompt
         self.temperature = temperature
+        self.langfuse = Langfuse()
         super().__init__()
 
     @abstractmethod
@@ -61,3 +65,9 @@ class FactCheckingAgentBaseClass(ABC):
             A dictionary representing the report.
         """
         pass
+
+    async def get_system_prompt(self):
+        prompt = self.langfuse.get_prompt(
+            "agent_system_prompt", label=os.getenv("ENVIRONMENT")
+        )
+        return prompt

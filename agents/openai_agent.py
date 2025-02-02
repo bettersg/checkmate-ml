@@ -9,8 +9,11 @@ import asyncio
 from openai.types.chat import ChatCompletionMessageToolCall
 from langfuse.decorators import observe
 import copy
+from datetime import datetime
+from langfuse import Langfuse
 
 logger = StructuredLogger("openai_agent")
+langfuse = Langfuse()
 
 
 class OpenAIAgent(FactCheckingAgentBaseClass):
@@ -19,7 +22,6 @@ class OpenAIAgent(FactCheckingAgentBaseClass):
         self,
         client: OpenAI,
         tool_list: list,
-        system_prompt: str,
         model: str = "gpt-4o",
         include_planning_step: bool = True,
         temperature: float = 0.2,
@@ -39,7 +41,7 @@ class OpenAIAgent(FactCheckingAgentBaseClass):
                 for tool in tool_list
                 if tool["function"].__name__ != "plan_next_step"
             ]
-        super().__init__(client, tool_list, system_prompt, temperature)
+        super().__init__(client, tool_list, temperature)
         self.available_tools = [
             OpenAIAgent.add_strict_and_required(definition)
             for definition in self.function_definitions
@@ -271,8 +273,12 @@ class OpenAIAgent(FactCheckingAgentBaseClass):
         returns:
             A dictionary representing the report.
         """
+        current_datetime = datetime.now()
         logger.info("Generating report")
-        system_prompt = self.system_prompt.format(
+        prompt = await self.get_system_prompt()
+        current_datetime = datetime.now()
+        system_prompt = prompt.compile(
+            datetime=current_datetime.strftime("%d %b %Y"),
             remaining_searches=self.remaining_searches,
             remaining_screenshots=self.remaining_screenshots,
         )
@@ -285,10 +291,12 @@ class OpenAIAgent(FactCheckingAgentBaseClass):
         first_step = True
         try:
             while len(messages) < 50 and not completed:
-                system_prompt = self.system_prompt.format(
+                system_prompt = prompt.compile(
+                    datetime=current_datetime.strftime("%d %b %Y"),
                     remaining_searches=self.remaining_searches,
                     remaining_screenshots=self.remaining_screenshots,
                 )
+                messages[0]["content"] = system_prompt
 
                 completion = self.client.chat.completions.create(
                     model=self.model,
@@ -299,6 +307,7 @@ class OpenAIAgent(FactCheckingAgentBaseClass):
                         is_plan_step=think,
                     ),
                     tool_choice="required",
+                    langfuse_prompt=prompt,
                 )
                 messages.append(completion.choices[0].message.to_dict())
                 tool_calls = completion.choices[0].message.tool_calls
