@@ -6,7 +6,7 @@ from enum import Enum
 from langfuse import Langfuse
 import os
 
-client = create_openai_client("deepseek")
+client = create_openai_client("openai")
 langfuse = Langfuse()
 
 

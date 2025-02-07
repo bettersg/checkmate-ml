@@ -21,7 +21,7 @@ def compile_messages_array():
 
 
 config = {
-    "model": "deepseek-chat",
+    "model": "gpt-4o",
     "temperature": 0.0,
 }
 

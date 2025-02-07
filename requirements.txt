@@ -6,13 +6,13 @@ pydantic==2.10.4
 scikit-learn==1.2.2
 joblib==1.4.2
 numpy==1.26.4
-openai==1.59.3
+openai==1.61.1
 google-cloud-aiplatform==1.74.0
 requests==2.32.3
 langchain==0.3.14
 langchain-openai==0.2.14
 python-dotenv==1.0.1
-langfuse==2.57.4
+langfuse==2.59.1
 deep-translator==1.11.4
 google-genai==0.3.0
 pytest==8.3.4
