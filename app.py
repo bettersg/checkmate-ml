@@ -150,7 +150,7 @@ def get_redact(item: ItemText, background_tasks: BackgroundTasks):
 async def get_community_note_api_handler(
     request: CommunityNoteRequest,
     background_tasks: BackgroundTasks,
-    provider: SupportedModelProvider = SupportedModelProvider.GEMINI,
+    provider: SupportedModelProvider = SupportedModelProvider.GROQ,
 ) -> AgentResponse:
     logger.info(
         "Processing v2 community note request",
