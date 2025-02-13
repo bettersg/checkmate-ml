@@ -6,7 +6,7 @@ from enum import Enum
 from langfuse import Langfuse
 import os
 
-client = create_openai_client("groq")
+client = create_openai_client("deepseek")
 langfuse = Langfuse()
 
 
@@ -33,7 +33,7 @@ async def translate_text(text: str, language: str = SupportedLanguage.CN.value):
         messages = prompt.compile(language=language, text=text)
         config = prompt.config
         response = client.chat.completions.create(
-            model="llama-3.3-70b-versatile",
+            model=config.get("model", "deepseek-chat"),
             temperature=config.get("temperature", 0.0),
             messages=messages,
             langfuse_prompt=prompt,
