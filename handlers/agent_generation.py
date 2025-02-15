@@ -135,6 +135,8 @@ async def get_outputs(
                 model = "gpt-4o"
             elif provider == SupportedModelProvider.DEEPSEEK:
                 model = "deepseek-chat"
+            elif provider == SupportedModelProvider.GROQ:
+                model = "llama-3.3-70b-versatile"
 
             agent = OpenAIAgent(
                 openai_client,

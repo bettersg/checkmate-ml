@@ -9,6 +9,7 @@ class SupportedModelProvider(str, Enum):
     GEMINI = "gemini"
     OPENAI = "openai"
     DEEPSEEK = "deepseek"
+    GROQ = "groq"
 
 
 class AgentResponse(BaseModel):
