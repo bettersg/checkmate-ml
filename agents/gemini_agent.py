@@ -3,10 +3,16 @@
 from .abstract import FactCheckingAgentBaseClass
 from typing import Union, List
 from google.genai import types
-from utils.gemini_utils import get_image_part, generate_image_parts, generate_text_parts
+from utils.gemini_utils import (
+    get_image_part,
+    generate_image_parts,
+    generate_text_parts,
+    generate_screenshot_parts,
+)
 import asyncio
 import time
-from tools import summarise_report_factory
+from tools import summarise_report_factory, preprocess_inputs
+from tools.preprocess_inputs import get_gemini_content
 import json
 from logger import StructuredLogger
 from langfuse.decorators import observe, langfuse_context
@@ -249,10 +255,7 @@ class GeminiAgent(FactCheckingAgentBaseClass):
                     remaining_searches=self.remaining_searches,
                     remaining_screenshots=self.remaining_screenshots,
                 )
-                if first_step:
-                    available_functions = ["infer_intent"]
-                    think = False
-                elif think and self.include_planning_step:
+                if think and self.include_planning_step:
                     available_functions = ["plan_next_step"]
                 else:
                     banned_functions = ["plan_next_step", "infer_intent"]
@@ -308,7 +311,6 @@ class GeminiAgent(FactCheckingAgentBaseClass):
                         )
                 if len(function_call_promises) == 0:
                     think = not think
-                    first_step = False
                     continue
                 function_results = await asyncio.gather(*function_call_promises)
                 response_parts = GeminiAgent.flatten_and_organise(function_results)
@@ -329,7 +331,6 @@ class GeminiAgent(FactCheckingAgentBaseClass):
                             return return_dict
                 messages.append(types.Content(parts=response_parts, role="user"))
                 think = not think
-                first_step = False
             logger.error("Report couldn't be generated after 50 turns")
             return {
                 "error": "Report couldn't be generated after 50 turns",
@@ -380,12 +381,36 @@ class GeminiAgent(FactCheckingAgentBaseClass):
             }
         start_time = time.time()  # Start the timer
         cost_tracker = {"total_cost": 0, "cost_trace": []}  # To store the cost details
+
+        preprocessed_response = await preprocess_inputs(
+            image_url=image_url, caption=caption, text=text
+        )
+        if not preprocessed_response.get("success"):
+            child_logger.error("Error in preprocessing inputs")
+            return {
+                "success": False,
+                "error": "Error in preprocessing inputs",
+            }
+        else:
+            child_logger.info("Preprocessing inputs successful")
+            screenshots_results = preprocessed_response.get("screenshots", [])
+            screenshots_content = get_gemini_content(screenshots_results)
+            results = preprocessed_response.get("result", {})
+            is_access_blocked = results.get("isAccessBlocked", False)
+            is_video = results.get("isVideo", False)
+            intent = results.get("intent", "An error occurred, figure it out yourself")
+
         if text is not None:
             child_logger.info(f"Generating text parts for text: {text}")
             parts = generate_text_parts(text)
 
         elif image_url is not None:
             parts = generate_image_parts(image_url, caption)
+
+        parts.append(types.Part.from_text(f"User's likely intent: {intent}"))
+
+        if screenshots_content:
+            parts.extend(screenshots_content)
 
         report_dict = await self.generate_report(parts.copy())
 
@@ -399,6 +424,8 @@ class GeminiAgent(FactCheckingAgentBaseClass):
             )
             if summary_results.get("success"):
                 report_dict["community_note"] = summary_results["community_note"]
+                report_dict["is_access_blocked"] = is_access_blocked
+                report_dict["is_video"] = is_video
                 child_logger.info("Community note generated successfully")
             else:
                 report_dict["success"] = False
