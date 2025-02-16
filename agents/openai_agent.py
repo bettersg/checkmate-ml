@@ -404,8 +404,8 @@ class OpenAIAgent(FactCheckingAgentBaseClass):
             screenshots_results = preprocessed_response.get("screenshots", [])
             screenshots_content = get_openai_content(screenshots_results)
             results = preprocessed_response.get("result", {})
-            is_access_blocked = results.get("isAccessBlocked", False)
-            is_video = results.get("isVideo", False)
+            is_access_blocked = results.get("is_access_blocked", False)
+            is_video = results.get("is_video", False)
             intent = results.get("intent", "An error occurred, figure it out yourself")
 
         if text is not None:
