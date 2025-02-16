@@ -391,22 +391,24 @@ class GeminiAgent(FactCheckingAgentBaseClass):
 
         duration = time.time() - start_time  # Calculate duration
 
-        time.sleep(3)
+        report_dict["agent_time_taken"] = duration
         if report_dict.get("success") and report_dict.get("report"):
-            report_dict["agent_time_taken"] = duration
+
             summary_results = await summarise_report(
                 report=report_dict["report"],
             )
             if summary_results.get("success"):
                 report_dict["community_note"] = summary_results["community_note"]
+                child_logger.info("Community note generated successfully")
             else:
+                report_dict["success"] = False
                 report_dict["community_note"] = None
+                child_logger.warn("Community note not generated, summary failed")
                 report_dict["error"] = summary_results.get(
                     "error", "No community note generated"
                 )
             report_dict["total_time_taken"] = time.time() - start_time
-            child_logger.info("Community note generated successfully")
-            return report_dict
         else:
+            report_dict["success"] = False
             child_logger.warn("Community report not generated")
-            return report_dict
+        return report_dict

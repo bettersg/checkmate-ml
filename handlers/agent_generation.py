@@ -94,13 +94,12 @@ async def get_outputs(
     provider: SupportedModelProvider = SupportedModelProvider.OPENAI,
     **kwargs,
 ):
-    langfuse_context.update_current_trace(
-        tags=[
-            os.environ.get("ENVIRONMENT", "missing"),
-            "agent_generation",
-            "community_note",
-        ]
-    )
+    tags = [
+        os.environ.get("ENVIRONMENT", "missing"),
+        "agent_generation",
+        "community_note",
+    ]
+    langfuse_context.update_current_trace(tags=tags)
     child_logger = logger.child(
         model=provider.value,
         text=text,
@@ -147,7 +146,7 @@ async def get_outputs(
                     infer_intent_tool,
                 ],
                 include_planning_step=addPlanning,
-                temperature=0.2,
+                temperature=0.0,
                 model=model,
             )
 
@@ -200,6 +199,9 @@ async def get_outputs(
 
     finally:
         if response:
+            if not response.success:
+                tags.append("error")
+                langfuse_context.update_current_trace(tags=tags)
             try:
                 doc_ref = db.collection("agent_calls").document(request_id)
                 doc_ref.set(response.model_dump())
