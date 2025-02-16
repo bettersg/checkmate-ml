@@ -61,6 +61,31 @@ def generate_image_parts(image_url: str, caption: str = None):
     return parts
 
 
+def generate_screenshot_parts(image_url: str, url: str = None):
+    """Generates a list of parts for an image with an optional caption.
+
+    Args:
+        image_url: The URL of the image.
+        caption: An optional caption for the image.
+
+    Returns:
+        A list of parts containing the image and caption.
+    """
+    parts = []
+    if image_url is None:
+        raise ValueError("Image URL is required when data_type is 'image'")
+    if image_url.startswith("gs://"):
+        # parts.append(types.Part.from_uri(image_url, mime_type="image/jpeg")) #TODO: Change in future
+        parts.append(get_image_part(image_url))
+    else:
+        image = httpx.get(image_url)
+        file_content = image.content
+        parts.append(types.Part.from_bytes(data=file_content, mime_type="image/jpeg"))
+
+    parts.append(types.Part.from_text(f"Screenshot of {url} above"))
+    return parts
+
+
 def generate_text_parts(text: str):
     """Generates a list of parts for a text input.
 

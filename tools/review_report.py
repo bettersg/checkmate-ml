@@ -15,9 +15,7 @@ client = create_openai_client("openai")
 
 
 @observe()
-async def submit_report_for_review(
-    report, sources, isControversial, isVideo, isAccessBlocked
-):
+async def submit_report_for_review(report, sources, isControversial):
     prompt = langfuse.get_prompt("review_report", label=os.getenv("ENVIRONMENT"))
     config = prompt.config
 
@@ -70,28 +68,12 @@ review_report_definition = dict(
                         "description": "True if the content contains political or religious viewpoints that are grounded in opinions rather than provable facts, and are likely to be divisive or polarizing.",
                     },
                 ),
-                (
-                    "isVideo",
-                    {
-                        "type": "BOOLEAN",
-                        "description": "True if the content or URL sent by the user to be checked points to a video (e.g., YouTube, TikTok, Instagram Reels, Facebook videos).",
-                    },
-                ),
-                (
-                    "isAccessBlocked",
-                    {
-                        "type": "BOOLEAN",
-                        "description": "True if the content or URL sent by the user to be checked is inaccessible/removed/blocked. An example is being led to a login page instead of post content.",
-                    },
-                ),
             ]
         ),
         "required": [
             "report",
             "sources",
             "isControversial",
-            "isVideo",
-            "isAccessBlocked",
         ],
     },
 )
