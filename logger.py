@@ -57,7 +57,7 @@ class StructuredLogger(logging.Logger):
         if exc_info is None and sys.exc_info()[0] is not None:
             exc_info = sys.exc_info()
 
-        if exc_info:
+        if isinstance(exc_info, tuple) and len(exc_info) == 3:
             exc_type, exc_value, exc_traceback = exc_info
             formatted_tb = traceback.format_exception(
                 exc_type, exc_value, exc_traceback
@@ -66,6 +66,11 @@ class StructuredLogger(logging.Logger):
                 "type": exc_type.__name__,
                 "message": str(exc_value),
                 "traceback": "".join(formatted_tb),  # Combine traceback lines
+            }
+        else:
+            kwargs["error"] = {
+                "message": "Invalid exc_info format",
+                "exc_info_content": str(exc_info),  # Log raw exc_info for debugging
             }
 
         # Don't pass raw `exc_info` further; it's already processed into `error`
