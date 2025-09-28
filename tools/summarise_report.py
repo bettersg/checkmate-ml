@@ -1,4 +1,3 @@
-from google.genai import types
 import os
 from clients.openai import create_openai_client
 from typing import Union

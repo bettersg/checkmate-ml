@@ -13,6 +13,12 @@ from .dummy_tools import (
     plan_next_step,
     infer_intent,
 )
+from .preprocess_inputs import (
+    get_screenshots_from_text,
+    preprocess_inputs,
+    get_gemini_content,
+    get_openai_content,
+)
 
 __all__ = [
     "get_screenshot_tool",
@@ -31,4 +37,8 @@ __all__ = [
     "infer_intent",
     "translation_tool",
     "translate_text",
+    "get_screenshots_from_text",
+    "preprocess_inputs",
+    "get_gemini_content",
+    "get_openai_content",
 ]

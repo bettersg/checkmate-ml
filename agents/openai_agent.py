@@ -4,7 +4,8 @@ from typing import Union, List
 import json
 from logger import StructuredLogger
 import time
-from tools import summarise_report_factory
+from tools import summarise_report_factory, preprocess_inputs
+from tools.preprocess_inputs import get_openai_content
 import asyncio
 from openai.types.chat import ChatCompletionMessageToolCall
 from langfuse.decorators import observe
@@ -389,6 +390,23 @@ class OpenAIAgent(FactCheckingAgentBaseClass):
             }
         start_time = time.time()  # Start the timer
         cost_tracker = {"total_cost": 0, "cost_trace": []}  # To store the cost details
+        preprocessed_response = await preprocess_inputs(
+            image_url=image_url, caption=caption, text=text
+        )
+        if not preprocessed_response.get("success"):
+            child_logger.error("Error in preprocessing inputs")
+            return {
+                "success": False,
+                "error": "Error in preprocessing inputs",
+            }
+        else:
+            child_logger.info("Preprocessing inputs successful")
+            screenshots_results = preprocessed_response.get("screenshots", [])
+            screenshots_content = get_openai_content(screenshots_results)
+            results = preprocessed_response.get("result", {})
+            is_access_blocked = results.get("is_access_blocked", False)
+            is_video = results.get("is_video", False)
+            intent = results.get("intent", "An error occurred, figure it out yourself")
 
         if text is not None:
             content = [
@@ -407,6 +425,16 @@ class OpenAIAgent(FactCheckingAgentBaseClass):
                 {"type": "image_url", "image_url": {"url": image_url}},
             ]
 
+        if screenshots_content:
+            content.extend(screenshots_content)
+
+        content.append(
+            {
+                "type": "text",
+                "text": f"User's likely intent: {intent}",
+            }
+        )
+
         report_dict = await self.generate_report(content.copy())
 
         duration = time.time() - start_time  # Calculate duration
@@ -417,6 +445,8 @@ class OpenAIAgent(FactCheckingAgentBaseClass):
             )
             if summary_results.get("success"):
                 report_dict["community_note"] = summary_results["community_note"]
+                report_dict["is_access_blocked"] = is_access_blocked
+                report_dict["is_video"] = is_video
                 child_logger.info("Community note generated successfully")
             else:
                 report_dict["success"] = False
