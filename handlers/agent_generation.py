@@ -94,13 +94,12 @@ async def get_outputs(
     provider: SupportedModelProvider = SupportedModelProvider.OPENAI,
     **kwargs,
 ):
-    langfuse_context.update_current_trace(
-        tags=[
-            os.environ.get("ENVIRONMENT", "missing"),
-            "agent_generation",
-            "community_note",
-        ]
-    )
+    tags = [
+        os.environ.get("ENVIRONMENT", "missing"),
+        "agent_generation",
+        "community_note",
+    ]
+    langfuse_context.update_current_trace(tags=tags)
     child_logger = logger.child(
         model=provider.value,
         text=text,
@@ -135,6 +134,8 @@ async def get_outputs(
                 model = "gpt-4o"
             elif provider == SupportedModelProvider.DEEPSEEK:
                 model = "deepseek-chat"
+            elif provider == SupportedModelProvider.GROQ:
+                model = "llama-3.3-70b-versatile"
 
             agent = OpenAIAgent(
                 openai_client,
@@ -147,7 +148,7 @@ async def get_outputs(
                     infer_intent_tool,
                 ],
                 include_planning_step=addPlanning,
-                temperature=0.2,
+                temperature=0.0,
                 model=model,
             )
 
@@ -158,6 +159,7 @@ async def get_outputs(
         if community_note is not None:
             try:
                 chinese_note = await translate_text(community_note, language="cn")
+                child_logger.info("Translation to chinese successful")
             except Exception as e:
                 child_logger.error(f"Error in translation: {e}")
 
@@ -200,11 +202,20 @@ async def get_outputs(
 
     finally:
         if response:
+            if not response.success:
+                child_logger.info("Updating langfuse tag")
+                tags.append("error")
+                langfuse_context.update_current_trace(tags=tags)
+                child_logger.info("Langfuse tag updated")
             try:
+                child_logger.info("Storing response in Firestore")
                 doc_ref = db.collection("agent_calls").document(request_id)
                 doc_ref.set(response.model_dump())
+                child_logger.info("Response stored in Firestore")
             except Exception as e:
                 child_logger.error(f"Error storing response in Firestore: {e}")
+
+        child_logger.info("Exiting agent_generation function")
 
         return response  # Always return response, even if it's an error response
 

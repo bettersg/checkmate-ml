@@ -13,6 +13,9 @@ def create_openai_client(provider=SupportedModelProvider.OPENAI):
     elif provider == SupportedModelProvider.DEEPSEEK:
         api_key = os.getenv("DEEPSEEK_API_KEY")
         base_url = os.getenv("DEEPSEEK_BASE_URL")
+    elif provider == SupportedModelProvider.GROQ:
+        api_key = os.getenv("GROQ_API_KEY")
+        base_url = os.getenv("GROQ_BASE_URL")
     else:
         raise ValueError(f"Unsupported model provider: {provider}")
     client = OpenAI(api_key=api_key, base_url=base_url)

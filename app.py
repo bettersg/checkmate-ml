@@ -57,7 +57,7 @@ def get_embedding(item: ItemText, background_tasks: BackgroundTasks):
     logger.info("Processing embedding request", text=item.text[:100])
     embedding = embedding_model.encode(item.text)
     result = {"embedding": embedding.tolist()}
-    cleanup(background_tasks, "Embedding generated successfully")
+    cleanup(background_tasks, "Embedding background tasks complete")
     return result
 
 
@@ -67,7 +67,7 @@ def get_L1_category(item: ItemText, background_tasks: BackgroundTasks):
     embedding = embedding_model.encode(item.text)
     prediction = L1_svc.predict(embedding.reshape(1, -1))[0]
     result = {"prediction": "irrelevant" if prediction == "trivial" else prediction}
-    cleanup(background_tasks, "L1 category prediction complete")
+    cleanup(background_tasks, "L1 category prediction background tasks complete")
     return result
 
 
@@ -78,7 +78,7 @@ def get_sensitivity(item: ItemText, background_tasks: BackgroundTasks):
         item.text, langfuse_observation_id=request_id_var.get()
     )
     result = {"is_sensitive": is_sensitive}
-    cleanup(background_tasks, "Sensitivity check complete")
+    cleanup(background_tasks, "Sensitivity check background tasks complete")
     return result
 
 
@@ -89,7 +89,7 @@ def get_needs_checking(item: ItemText, background_tasks: BackgroundTasks):
         item.text, langfuse_observation_id=request_id_var.get()
     )
     result = {"needsChecking": should_review}
-    cleanup(background_tasks, "Review check complete")
+    cleanup(background_tasks, "Review check background tasks complete")
     return result
 
 
@@ -108,7 +108,7 @@ def get_ocr(item: ItemUrl, background_tasks: BackgroundTasks):
         results["prediction"] = prediction
     else:
         results["prediction"] = "unsure"
-    cleanup(background_tasks, "OCR processing complete")
+    cleanup(background_tasks, "OCR processing backgrouind tasks complete")
     return results
 
 
@@ -132,7 +132,7 @@ def get_redact(item: ItemText, background_tasks: BackgroundTasks):
             "tokens_used": tokens_used,
             "reasoning": response_dict["reasoning"],
         }
-        cleanup(background_tasks, "Redaction complete")
+        cleanup(background_tasks, "Redaction background tasks complete")
         return result
     except Exception as e:
         logger.error("Redaction failed", error=str(e))
@@ -176,7 +176,8 @@ async def get_community_note_api_handler(
             provider=provider,
             langfuse_observation_id=request_id_var.get(),  # set langfuse trace ID as request ID
         )
-        cleanup(background_tasks, f"/getCommunityNote complete")
+        cleanup(background_tasks, f"/getCommunityNote background tasks complete")
+        logger.info("/getCommunityNote completed successfully")
         return result
 
     except HTTPException as e:
